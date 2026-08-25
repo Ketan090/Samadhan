@@ -4,8 +4,7 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search as SearchIcon, Lightbulb, Building2, Users, FileText, MapPin } from 'lucide-react';
-import { getCategoryIcon, getStatusColor, formatNumber } from '@/lib/utils';
+import { Search as SearchIcon, Lightbulb, Building2, FileText } from 'lucide-react';
 
 const allData = [
   { type: 'challenge', title: 'Smart Waste Collection for Urban Wards', detail: 'Environment • Ranchi, Jharkhand', href: '/challenges/1', icon: Lightbulb },
@@ -35,13 +34,16 @@ export default function SearchPage() {
   });
 
   return (
-    <div className="container py-8 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Search</h1>
-      <div className="relative mb-6">
-        <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+    <div className="container py-10 max-w-3xl mx-auto">
+      <h1 className="text-3xl font-bold tracking-tight mb-2">Search</h1>
+      <p className="text-muted-foreground mb-8">Find challenges, organizations, and solutions</p>
+
+      {/* Search Input */}
+      <div className="relative mb-8">
+        <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         <Input
-          className="pl-12 h-12 text-lg"
-          placeholder="Search challenges, organizations, solutions..."
+          className="pl-12 h-13 text-base rounded-xl shadow-card border-0"
+          placeholder="Search anything..."
           value={query}
           onChange={e => setQuery(e.target.value)}
           autoFocus
@@ -49,39 +51,45 @@ export default function SearchPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6 overflow-x-auto">
+      <div className="flex gap-1.5 mb-6 overflow-x-auto pb-1">
         {tabs.map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${activeTab === tab ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 whitespace-nowrap ${
+              activeTab === tab
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted'
+            }`}
           >
             {tab}
           </button>
         ))}
       </div>
 
+      {/* Results */}
       <div className="space-y-2">
         {filtered.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <SearchIcon className="h-12 w-12 mx-auto mb-4 opacity-30" />
-            <p>No results found for "{query}"</p>
+          <div className="text-center py-16 text-muted-foreground">
+            <SearchIcon className="h-12 w-12 mx-auto mb-4 opacity-20" />
+            <p className="font-medium">No results found</p>
+            <p className="text-sm mt-1">Try a different search term</p>
           </div>
         ) : (
           filtered.map((item, i) => {
             const Icon = item.icon;
             return (
               <Link key={i} href={item.href}>
-                <Card className="hover:shadow-md transition-all cursor-pointer">
+                <Card className="hover:shadow-card-hover transition-all duration-200 cursor-pointer border-0 shadow-card group">
                   <CardContent className="p-4 flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                      <Icon className="h-5 w-5 text-muted-foreground" />
+                    <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 group-hover:bg-primary/10 transition-colors">
+                      <Icon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium truncate">{item.title}</h3>
-                      <p className="text-sm text-muted-foreground">{item.detail}</p>
+                      <h3 className="font-medium text-sm truncate group-hover:text-primary transition-colors">{item.title}</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">{item.detail}</p>
                     </div>
-                    <Badge variant="outline" className="text-xs capitalize flex-shrink-0">{item.type}</Badge>
+                    <Badge variant="outline" className="text-[10px] capitalize flex-shrink-0 font-medium">{item.type}</Badge>
                   </CardContent>
                 </Card>
               </Link>
