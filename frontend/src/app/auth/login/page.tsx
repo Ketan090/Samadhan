@@ -23,8 +23,18 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     try {
-      await login(email, password);
-      router.push('/');
+      const userData = await login(email, password);
+      // Redirect to role-based dashboard
+      const user = JSON.parse(localStorage.getItem('samadhanhub_user') || '{}');
+      const roleRoutes: Record<string, string> = {
+        admin: '/admin',
+        government: '/government',
+        university: '/university',
+        industry: '/industry',
+        citizen: '/challenges',
+        expert: '/challenges',
+      };
+      router.push(roleRoutes[user.role] || '/');
     } catch {
       setError('Invalid credentials. Try a demo account below.');
     }
