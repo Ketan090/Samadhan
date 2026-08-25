@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
-import { Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Eye, EyeOff, ArrowRight, Shield, Building2, GraduationCap, Users, Landmark, CheckCircle2 } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -32,12 +32,11 @@ export default function LoginPage() {
   };
 
   const demoAccounts = [
-    { label: 'Admin', email: 'admin@samadhanhub.gov.in', role: 'admin', color: 'bg-slate-100 dark:bg-slate-800' },
-    { label: 'Government', email: 'priya.sharma@gov.in', role: 'government', color: 'bg-rose-50 dark:bg-rose-950/30' },
-    { label: 'University', email: 'amit.verma@iitb.ac.in', role: 'university', color: 'bg-emerald-50 dark:bg-emerald-950/30' },
-    { label: 'Industry', email: 'vikram.patel@techcorp.in', role: 'industry', color: 'bg-indigo-50 dark:bg-indigo-950/30' },
-    { label: 'Expert', email: 'meena.joshi@earthwatch.org', role: 'expert', color: 'bg-violet-50 dark:bg-violet-950/30' },
-    { label: 'Citizen', email: 'citizen1@gmail.com', role: 'citizen', color: 'bg-amber-50 dark:bg-amber-950/30' },
+    { label: 'Admin', email: 'admin@samadhanhub.gov.in', password: 'admin123', icon: Shield, color: 'bg-slate-100 dark:bg-slate-800', iconColor: 'text-slate-600 dark:text-slate-400', name: 'Dr. Rajesh Kumar' },
+    { label: 'Government', email: 'government@samadhanhub.gov.in', password: 'government123', icon: Landmark, color: 'bg-rose-50 dark:bg-rose-950/30', iconColor: 'text-rose-600 dark:text-rose-400', name: 'Shri Amit Singh, IAS' },
+    { label: 'University', email: 'university@samadhanhub.gov.in', password: 'university123', icon: GraduationCap, color: 'bg-emerald-50 dark:bg-emerald-950/30', iconColor: 'text-emerald-600 dark:text-emerald-400', name: 'Prof. Anita Desai' },
+    { label: 'Industry', email: 'industry@samadhanhub.gov.in', password: 'industry123', icon: Building2, color: 'bg-indigo-50 dark:bg-indigo-950/30', iconColor: 'text-indigo-600 dark:text-indigo-400', name: 'Vikram Mehta' },
+    { label: 'Citizen', email: 'citizen@samadhanhub.gov.in', password: 'citizen123', icon: Users, color: 'bg-amber-50 dark:bg-amber-950/30', iconColor: 'text-amber-600 dark:text-amber-400', name: 'Priya Sharma' },
   ];
 
   return (
@@ -98,19 +97,28 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent className="pt-0 pb-4 px-5">
             <p className="text-xs text-amber-700 dark:text-amber-500/80 mb-3">
-              Password for all accounts: <code className="bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded text-[11px] font-mono">password123</code>
+              Click any account to autofill. Each role has a unique password shown below.
             </p>
-            <div className="grid grid-cols-2 gap-1.5">
-              {demoAccounts.map(acc => (
-                <button
-                  key={acc.email}
-                  onClick={() => { setEmail(acc.email); setPassword('password123'); }}
-                  className={`text-left p-2.5 rounded-lg border border-transparent hover:border-amber-200 dark:hover:border-amber-800/30 ${acc.color} hover:shadow-sm transition-all duration-150`}
-                >
-                  <div className="text-xs font-semibold">{acc.label}</div>
-                  <div className="text-[10px] text-muted-foreground truncate mt-0.5">{acc.email}</div>
-                </button>
-              ))}
+            <div className="space-y-1.5">
+              {demoAccounts.map(acc => {
+                const Icon = acc.icon;
+                return (
+                  <button
+                    key={acc.email}
+                    onClick={() => { setEmail(acc.email); setPassword(acc.password); }}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg border border-transparent hover:border-amber-200 dark:hover:border-amber-800/30 ${acc.color} hover:shadow-sm transition-all duration-150 text-left`}
+                  >
+                    <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${acc.color} ${acc.iconColor}`}>
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-semibold">{acc.name}</div>
+                      <div className="text-[10px] text-muted-foreground truncate">{acc.email}</div>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] shrink-0">{acc.label}</Badge>
+                  </button>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
