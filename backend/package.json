@@ -1,7 +1,7 @@
 {
   "name": "samadhanhub-backend",
   "version": "1.0.0",
-  "description": "SamadhanHub - Smart India Hackathon Collaboration Platform API",
+  "description": "SamadhanHub - Collaborative Problem Solving Platform API",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",

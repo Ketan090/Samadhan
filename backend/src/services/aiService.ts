@@ -1,7 +1,7 @@
 /**
  * AI Service Abstraction
  * Provides an interface for AI analysis that can later connect to an LLM/API.
- * Currently includes a mock/demo implementation for SIH presentation.
+ * Currently includes a mock/demo implementation for demonstration purposes.
  */
 
 export interface AIAnalysisResult {

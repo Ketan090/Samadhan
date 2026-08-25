@@ -2,7 +2,7 @@
 
 **Real Problems. Collective Intelligence. Measurable Solutions.**
 
-A digital platform to crowdsource societal challenges and facilitate collaborative problem solving through universities and industry partnerships. Built for Smart India Hackathon 2024.
+A digital platform to crowdsource societal challenges and facilitate collaborative problem solving through universities and industry partnerships.
 
 ## 🌟 Key Features
 
@@ -37,7 +37,7 @@ A digital platform to crowdsource societal challenges and facilitate collaborati
 
 ### AI Service
 - Abstraction layer ready for LLM/API integration
-- Mock/demo implementation for SIH presentation
+- Mock/demo implementation for demonstration purposes
 - Challenge classification, impact scoring, and collaboration matching
 
 ## 📦 Installation
@@ -116,12 +116,11 @@ Visit [http://localhost:3000](http://localhost:3000)
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | admin@samadhanhub.gov.in | password123 |
-| Government | priya.sharma@gov.in | password123 |
-| University | amit.verma@iitb.ac.in | password123 |
-| Industry | vikram.patel@techcorp.in | password123 |
-| Expert | meena.joshi@earthwatch.org | password123 |
-| Citizen | citizen1@gmail.com | password123 |
+| Admin | admin@samadhanhub.gov.in | admin123 |
+| Government | government@samadhanhub.gov.in | government123 |
+| University | university@samadhanhub.gov.in | university123 |
+| Industry | industry@samadhanhub.gov.in | industry123 |
+| Citizen | citizen@samadhanhub.gov.in | citizen123 |
 
 ## 📋 API Endpoints
 
@@ -164,7 +163,7 @@ Visit [http://localhost:3000](http://localhost:3000)
 - `POST /api/ai/analyze-challenge` — AI analysis of a challenge
 - `POST /api/ai/match-collaborators` — AI collaboration matching
 
-## 🎯 SIH Demonstration Flow (5-10 minutes)
+## 🎯 Demonstration Flow (5-10 minutes)
 
 1. **Citizen submits** a societal challenge via the multi-step form
 2. **AI analyzes** the challenge — classification, impact score, required expertise
@@ -193,7 +192,7 @@ samadhanhub/
 │   └── package.json
 ├── frontend/
 │   ├── src/
-│   │   ├── app/           # Next.js pages (15+ pages)
+│   │   ├── app/           # Next.js pages (17 pages)
 │   │   │   ├── challenges/    # Discovery, detail, map, submit
 │   │   │   ├── solutions/     # List, detail, submit
 │   │   │   ├── university/    # University portal
@@ -220,4 +219,4 @@ samadhanhub/
 
 ## 📄 License
 
-Built for Smart India Hackathon 2024. Open source for educational purposes.
+Open source for educational purposes.

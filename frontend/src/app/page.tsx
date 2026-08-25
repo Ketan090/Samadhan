@@ -82,7 +82,7 @@ export default function HomePage() {
             {/* Badge */}
             <div className="animate-fade-up inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm px-5 py-2 text-sm font-medium text-white/80 mb-8">
               <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-              Smart India Hackathon 2024
+              Collaborative Innovation Platform
             </div>
 
             {/* Title */}

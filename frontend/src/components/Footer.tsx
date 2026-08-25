@@ -63,7 +63,7 @@ export default function Footer() {
 
         <div className="mt-10 pt-6 border-t flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground">
-            © 2024 SamadhanHub. Built for Smart India Hackathon.
+            © 2024 SamadhanHub. Empowering collaborative problem solving.
           </p>
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-500 text-[10px] px-2 py-0.5 font-medium">

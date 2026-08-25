@@ -27,7 +27,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Demo accounts for SIH presentation — works without a backend
+// Demo accounts — works without a backend
 const DEMO_ACCOUNTS: Record<string, { user: User; password: string }> = {
   'admin@samadhanhub.gov.in': {
     user: {
@@ -84,7 +84,7 @@ const DEMO_ACCOUNTS: Record<string, { user: User; password: string }> = {
       name: 'Shri Amit Singh, IAS',
       role: 'government',
       organization: 'Ministry of Electronics & IT',
-      bio: 'Nodal officer for Smart India Hackathon coordination',
+      bio: 'Nodal officer for platform coordination and governance',
     },
     password: 'government123',
   },
