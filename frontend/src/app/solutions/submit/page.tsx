@@ -1,15 +1,14 @@
 'use client';
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, ArrowRight, ArrowLeft, Lightbulb, Rocket } from 'lucide-react';
+import { CheckCircle2, ArrowRight, ArrowLeft, Rocket } from 'lucide-react';
 
-export default function SubmitSolutionPage() {
+function SubmitSolutionForm() {
   const searchParams = useSearchParams();
   const challengeId = searchParams.get('challenge') || '';
   const [step, setStep] = useState(1);
@@ -45,7 +44,6 @@ export default function SubmitSolutionPage() {
       <h1 className="text-3xl font-bold mb-2">Submit a Solution</h1>
       <p className="text-muted-foreground mb-8">Propose your innovative solution to a societal challenge</p>
 
-      {/* Progress */}
       <div className="flex items-center gap-2 mb-8">
         {[1, 2].map(s => (
           <React.Fragment key={s}>
@@ -126,5 +124,21 @@ export default function SubmitSolutionPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function SubmitSolutionPage() {
+  return (
+    <Suspense fallback={
+      <div className="container py-12 max-w-3xl mx-auto text-center">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-muted rounded w-1/3 mx-auto" />
+          <div className="h-4 bg-muted rounded w-1/2 mx-auto" />
+          <div className="h-64 bg-muted rounded-lg" />
+        </div>
+      </div>
+    }>
+      <SubmitSolutionForm />
+    </Suspense>
   );
 }
