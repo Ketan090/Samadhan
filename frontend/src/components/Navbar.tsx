@@ -89,7 +89,7 @@ export default function Navbar() {
                 {userMenuOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
-                    <div className="absolute right-0 top-full mt-2 w-52 rounded-xl border bg-popover p-1 shadow-elevated z-50">
+                    <div className="absolute right-0 top-full mt-2 w-52 rounded-xl border p-1 shadow-elevated z-50" style={{ backgroundColor: 'hsl(0, 0%, 100%)', color: 'hsl(224, 71%, 4%)' }}>
                       <div className="px-3 py-2.5 border-b mb-1">
                         <p className="text-sm font-medium truncate">{user.name}</p>
                         <p className="text-[11px] text-muted-foreground capitalize">{user.role}</p>

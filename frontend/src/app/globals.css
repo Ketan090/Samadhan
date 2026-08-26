@@ -22,6 +22,8 @@
     --input: 220 13% 91%;
     --ring: 220 70% 50%;
     --radius: 0.75rem;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71% 4%;
   }
 
   .dark {
@@ -42,6 +44,8 @@
     --border: 215 28% 17%;
     --input: 215 28% 17%;
     --ring: 224 76% 48%;
+    --popover: 224 71% 4%;
+    --popover-foreground: 210 40% 98%;
   }
 }
 
@@ -110,6 +114,14 @@
   100% { background-position: 200% 0; }
 }
 
+/* Solid dropdown backgrounds — override any transparency from portal rendering */
+[data-radix-popper-content-wrapper] [role='listbox'],
+[data-radix-popper-content-wrapper] [data-radix-select-content],
+[data-radix-popper-content-wrapper] > div {
+  background: hsl(var(--popover)) !important;
+  color: hsl(var(--popover-foreground)) !important;
+}
+
 /* Leaflet fixes */
 .leaflet-container {
   z-index: 1;
@@ -139,4 +151,25 @@ html {
 /* Selection */
 ::selection {
   background: hsl(var(--primary) / 0.15);
+}
+
+/* Mobile responsive fixes */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Prevent horizontal scroll */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Touch-friendly tap targets */
+@media (pointer: coarse) {
+  button, a, [role='button'] {
+    min-height: 44px;
+  }
 }

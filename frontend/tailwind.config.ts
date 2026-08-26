@@ -10,7 +10,13 @@ const config: Config = {
   theme: {
     container: {
       center: true,
-      padding: "2rem",
+      padding: {
+        DEFAULT: "1rem",
+        sm: "1.5rem",
+        lg: "2rem",
+        xl: "2rem",
+        "2xl": "2rem",
+      },
       screens: {
         "2xl": "1400px",
       },
@@ -45,6 +51,10 @@ const config: Config = {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
         },
       },
       borderRadius: {
