@@ -114,12 +114,24 @@
   100% { background-position: 200% 0; }
 }
 
-/* Solid dropdown backgrounds — override any transparency from portal rendering */
-[data-radix-popper-content-wrapper] [role='listbox'],
-[data-radix-popper-content-wrapper] [data-radix-select-content],
-[data-radix-popper-content-wrapper] > div {
-  background: hsl(var(--popover)) !important;
-  color: hsl(var(--popover-foreground)) !important;
+/* Solid opaque dropdown backgrounds — forces opacity in light and dark mode */
+.select-dropdown-solid {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  opacity: 1 !important;
+}
+.dark .select-dropdown-solid {
+  background-color: #1e293b !important;
+  color: #f1f5f9 !important;
+}
+
+/* Also force Radix portal popups to be opaque */
+[data-radix-popper-content-wrapper] [data-radix-select-content] {
+  background-color: #ffffff !important;
+  opacity: 1 !important;
+}
+.dark [data-radix-popper-content-wrapper] [data-radix-select-content] {
+  background-color: #1e293b !important;
 }
 
 /* Leaflet fixes */

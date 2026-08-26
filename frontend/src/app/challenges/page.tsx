@@ -174,7 +174,7 @@ export default function ChallengesPage() {
                     <Badge className={`${getStatusColor(challenge.status)} capitalize text-[11px] font-medium`}>
                       {challenge.status}
                     </Badge>
-                    <Badge variant="outline" className={`text-[11px] capitalize font-medium ${getSeverityColor(challenge.severity)}`}>
+                    <Badge className={`text-[11px] capitalize font-medium ${getSeverityColor(challenge.severity)}`}>
                       {challenge.severity}
                     </Badge>
                   </div>

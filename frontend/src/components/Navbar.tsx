@@ -25,6 +25,9 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
+  const userMenuBg = theme === 'dark' ? '#1e293b' : '#ffffff';
+  const mobileMenuBg = theme === 'dark' ? '#0c1222' : '#ffffff';
+
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border/50 glass">
       <div className="container flex h-16 items-center justify-between">
@@ -89,16 +92,19 @@ export default function Navbar() {
                 {userMenuOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
-                    <div className="absolute right-0 top-full mt-2 w-52 rounded-xl border p-1 shadow-elevated z-50" style={{ backgroundColor: 'hsl(0, 0%, 100%)', color: 'hsl(224, 71%, 4%)' }}>
-                      <div className="px-3 py-2.5 border-b mb-1">
+                    <div
+                      className="absolute right-0 top-full mt-2 w-52 rounded-xl border border-border p-1 shadow-elevated z-[100]"
+                      style={{ backgroundColor: userMenuBg }}
+                    >
+                      <div className="px-3 py-2.5 border-b border-border mb-1" style={{ backgroundColor: userMenuBg }}>
                         <p className="text-sm font-medium truncate">{user.name}</p>
                         <p className="text-[11px] text-muted-foreground capitalize">{user.role}</p>
                       </div>
                       <Link href={`/${user.role}`} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
-                        <LayoutDashboard className="h-4 w-4" /> Dashboard
+                        <LayoutDashboard className="h-4 w-4" /> <span>Dashboard</span>
                       </Link>
                       <button className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-accent text-red-600 transition-colors" onClick={() => { logout(); setUserMenuOpen(false); }}>
-                        <LogOut className="h-4 w-4" /> Logout
+                        <LogOut className="h-4 w-4" /> <span>Logout</span>
                       </button>
                     </div>
                   </>
@@ -125,7 +131,7 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t bg-background/95 backdrop-blur-sm">
+        <div className="md:hidden border-t border-border" style={{ backgroundColor: mobileMenuBg }}>
           <div className="container py-3 space-y-0.5">
             {navLinks.map((link) => {
               const Icon = link.icon;
@@ -145,7 +151,7 @@ export default function Navbar() {
                 </Link>
               );
             })}
-            <div className="pt-2 mt-2 border-t space-y-0.5">
+            <div className="pt-2 mt-2 border-t border-border space-y-0.5">
               {[
                 { href: '/university', label: 'University Portal' },
                 { href: '/industry', label: 'Industry Portal' },

@@ -3,6 +3,7 @@ import * as React from "react"
 import * as SelectPrimitive from "@radix-ui/react-select"
 import { ChevronDown, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useTheme } from "@/contexts/ThemeContext"
 
 const Select = SelectPrimitive.Root
 const SelectGroup = SelectPrimitive.Group
@@ -31,33 +32,36 @@ SelectTrigger.displayName = SelectPrimitive.Trigger.displayName
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = "popper", ...props }, ref) => (
-  <SelectPrimitive.Portal>
-    <SelectPrimitive.Content
-      ref={ref}
-      className={cn(
-        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border shadow-lg animate-in fade-in-80",
-        position === "popper" && "translate-y-1",
-        className
-      )}
-      style={{
-        backgroundColor: 'hsl(0, 0%, 100%)',
-        color: 'hsl(224, 71%, 4%)',
-      } as React.CSSProperties}
-      position={position}
-      {...props}
-    >
-      <SelectPrimitive.Viewport
+>(({ className, children, position = "popper", ...props }, ref) => {
+  const { theme } = useTheme()
+  const bgColor = theme === 'dark' ? '#1e293b' : '#ffffff'
+  const fgColor = theme === 'dark' ? '#f1f5f9' : '#111827'
+
+  return (
+    <SelectPrimitive.Portal>
+      <SelectPrimitive.Content
+        ref={ref}
         className={cn(
-          "p-1",
-          position === "popper" && "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
+          "relative z-[100] max-h-96 min-w-[8rem] overflow-hidden rounded-md border shadow-lg animate-in fade-in-80",
+          position === "popper" && "translate-y-1",
+          className
         )}
+        style={{ backgroundColor: bgColor, color: fgColor, opacity: 1 }}
+        position={position}
+        {...props}
       >
-        {children}
-      </SelectPrimitive.Viewport>
-    </SelectPrimitive.Content>
-  </SelectPrimitive.Portal>
-))
+        <SelectPrimitive.Viewport
+          className={cn(
+            "p-1",
+            position === "popper" && "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
+          )}
+        >
+          {children}
+        </SelectPrimitive.Viewport>
+      </SelectPrimitive.Content>
+    </SelectPrimitive.Portal>
+  )
+})
 SelectContent.displayName = SelectPrimitive.Content.displayName
 
 const SelectItem = React.forwardRef<
