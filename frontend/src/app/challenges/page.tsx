@@ -2,31 +2,25 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { challengesAPI } from '@/lib/api';
-import { formatNumber, formatDate, getStatusColor, getSeverityColor, getCategoryIcon } from '@/lib/utils';
-import {
-  Search, MapPin, Users, ChevronLeft, ChevronRight,
-  SlidersHorizontal, X, Plus
-} from 'lucide-react';
+import { formatNumber, getStatusColor, getSeverityColor, getCategoryIcon } from '@/lib/utils';
+import { Search, MapPin, Users, ChevronLeft, ChevronRight, SlidersHorizontal, X, Plus, Layers } from 'lucide-react';
 
-const categories = ['Environment', 'Healthcare', 'Education', 'Transportation', 'Agriculture', 'Infrastructure', 'Social Welfare', 'Technology'];
-const severities = ['critical', 'high', 'medium', 'low'];
-const statuses = ['submitted', 'verified', 'open', 'in-progress', 'solved', 'implemented'];
-const states = ['Jharkhand', 'Bihar', 'Maharashtra', 'Tamil Nadu', 'Karnataka', 'Telangana', 'Delhi', 'West Bengal'];
+const categories = ['Environment','Healthcare','Education','Transportation','Agriculture','Infrastructure','Social Welfare','Technology'];
+const severities = ['critical','high','medium','low'];
+const statuses = ['submitted','verified','open','in-progress','solved','implemented'];
+const states = ['Jharkhand','Bihar','Maharashtra','Tamil Nadu','Karnataka','Telangana','Delhi','West Bengal'];
 
 const demoChallenges = [
-  { _id: '1', title: 'Smart Waste Collection for Urban Wards', description: 'Ranchi city generates approximately 450 tonnes of municipal solid waste daily, but the current collection efficiency is only about 40%.', category: 'Environment', location: { city: 'Ranchi', state: 'Jharkhand' }, severity: 'high', urgency: 'high', affectedPopulation: 25000, status: 'open', suggestedExpertise: ['IoT', 'AI', 'Data Science', 'Operations Research', 'Environmental Engineering'], createdAt: '2024-01-15', numberOfTeams: 3, numberOfSolutions: 2, submittedBy: { name: 'Rahul Singh', role: 'citizen' } },
-  { _id: '2', title: 'Rural Water Quality Monitoring System', description: 'Over 200 villages in rural Bihar rely on groundwater sources that are increasingly contaminated with arsenic, fluoride, and bacterial pathogens.', category: 'Healthcare', location: { city: 'Patna', state: 'Bihar' }, severity: 'critical', urgency: 'critical', affectedPopulation: 150000, status: 'open', suggestedExpertise: ['IoT', 'Environmental Engineering', 'Data Analytics'], createdAt: '2024-01-20', numberOfTeams: 2, numberOfSolutions: 1, submittedBy: { name: 'Anita Devi', role: 'citizen' } },
-  { _id: '3', title: 'Traffic Congestion Prediction in Smart Cities', description: 'Mumbai experiences severe traffic congestion during peak hours, resulting in an average commute time increase of 200%.', category: 'Transportation', location: { city: 'Mumbai', state: 'Maharashtra' }, severity: 'high', urgency: 'high', affectedPopulation: 500000, status: 'open', suggestedExpertise: ['AI/ML', 'Computer Vision', 'Data Science', 'IoT', 'Urban Planning'], createdAt: '2024-02-01', numberOfTeams: 4, numberOfSolutions: 3, submittedBy: { name: 'Prof. Amit Verma', role: 'university' } },
-  { _id: '4', title: 'Telemedicine for Remote Healthcare Access', description: 'Remote villages in Telangana have limited access to healthcare facilities. The nearest primary health center is 15-30 km away.', category: 'Healthcare', location: { city: 'Hyderabad', state: 'Telangana' }, severity: 'critical', urgency: 'critical', affectedPopulation: 75000, status: 'open', suggestedExpertise: ['Healthcare', 'Mobile Development', 'AI/ML', 'IoT'], createdAt: '2024-02-10', numberOfTeams: 2, numberOfSolutions: 1, submittedBy: { name: 'Dr. Sanjay Kumar', role: 'expert' } },
-  { _id: '5', title: 'Urban Flood Prevention Using IoT and AI', description: 'Chennai faces recurring urban floods during monsoon seasons. In 2015 and 2023, devastating floods caused massive damage.', category: 'Infrastructure', location: { city: 'Chennai', state: 'Tamil Nadu' }, severity: 'critical', urgency: 'critical', affectedPopulation: 300000, status: 'open', suggestedExpertise: ['IoT', 'AI/ML', 'GIS', 'Civil Engineering'], createdAt: '2024-02-15', numberOfTeams: 3, numberOfSolutions: 2, submittedBy: { name: 'Dr. Sunita Reddy', role: 'university' } },
-  { _id: '6', title: 'Digital Education Access for Underprivileged Students', description: 'Millions of students in rural and semi-urban areas lack access to quality digital education resources.', category: 'Education', location: { city: 'Patna', state: 'Bihar' }, severity: 'high', urgency: 'high', affectedPopulation: 500000, status: 'open', suggestedExpertise: ['EdTech', 'Mobile Development', 'AI/ML', 'UX Design'], createdAt: '2024-02-20', numberOfTeams: 5, numberOfSolutions: 4, submittedBy: { name: 'Anita Devi', role: 'citizen' } },
-  { _id: '7', title: 'Agricultural Supply Chain Optimization', description: 'Farmers in Jharkhand lose 25-40% of their produce due to inefficient supply chains, lack of market information.', category: 'Agriculture', location: { city: 'Ranchi', state: 'Jharkhand' }, severity: 'high', urgency: 'high', affectedPopulation: 200000, status: 'open', suggestedExpertise: ['Supply Chain', 'Mobile Development', 'AI/ML', 'Blockchain'], createdAt: '2024-03-01', numberOfTeams: 2, numberOfSolutions: 1, submittedBy: { name: 'Rahul Singh', role: 'citizen' } },
-  { _id: '8', title: 'Public Transport Route Optimization', description: 'The public bus transport system in Kolkata suffers from poorly optimized routes, overcrowding on some routes.', category: 'Transportation', location: { city: 'Kolkata', state: 'West Bengal' }, severity: 'high', urgency: 'medium', affectedPopulation: 1000000, status: 'open', suggestedExpertise: ['Data Science', 'AI/ML', 'Mobile Development', 'Operations Research'], createdAt: '2024-03-05', numberOfTeams: 1, numberOfSolutions: 0, submittedBy: { name: 'Green Earth Foundation', role: 'citizen' } }
+  { _id: '1', title: 'Smart Waste Collection for Urban Wards', description: 'Ranchi city generates 450 tonnes of waste daily with only 40% collection efficiency.', category: 'Environment', location: { city: 'Ranchi', state: 'Jharkhand' }, severity: 'high', affectedPopulation: 25000, status: 'open', suggestedExpertise: ['IoT','AI','Data Science'], numberOfTeams: 3, numberOfSolutions: 2 },
+  { _id: '2', title: 'Rural Water Quality Monitoring System', description: '200+ villages rely on groundwater contaminated with arsenic and fluoride.', category: 'Healthcare', location: { city: 'Patna', state: 'Bihar' }, severity: 'critical', affectedPopulation: 150000, status: 'open', suggestedExpertise: ['IoT','Environmental Engineering','Data Analytics'], numberOfTeams: 2, numberOfSolutions: 1 },
+  { _id: '3', title: 'Traffic Congestion Prediction in Smart Cities', description: 'Mumbai peak-hour commutes take 200% longer due to congestion.', category: 'Transportation', location: { city: 'Mumbai', state: 'Maharashtra' }, severity: 'high', affectedPopulation: 500000, status: 'open', suggestedExpertise: ['AI/ML','Computer Vision','Data Science'], numberOfTeams: 4, numberOfSolutions: 3 },
+  { _id: '4', title: 'Telemedicine for Remote Healthcare Access', description: 'Remote Telangana villages are 15-30km from the nearest health centre.', category: 'Healthcare', location: { city: 'Hyderabad', state: 'Telangana' }, severity: 'critical', affectedPopulation: 75000, status: 'open', suggestedExpertise: ['Healthcare','Mobile Development','AI/ML'], numberOfTeams: 2, numberOfSolutions: 1 },
+  { _id: '5', title: 'Urban Flood Prevention Using IoT and AI', description: 'Chennai monsoon floods cause massive damage without early warning.', category: 'Infrastructure', location: { city: 'Chennai', state: 'Tamil Nadu' }, severity: 'critical', affectedPopulation: 300000, status: 'open', suggestedExpertise: ['IoT','AI/ML','GIS'], numberOfTeams: 3, numberOfSolutions: 2 },
+  { _id: '6', title: 'Digital Education Access for Underprivileged Students', description: 'Millions lack access to quality digital education resources.', category: 'Education', location: { city: 'Patna', state: 'Bihar' }, severity: 'high', affectedPopulation: 500000, status: 'open', suggestedExpertise: ['EdTech','Mobile Development','AI/ML'], numberOfTeams: 5, numberOfSolutions: 4 },
 ];
 
 export default function ChallengesPage() {
@@ -34,197 +28,130 @@ export default function ChallengesPage() {
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    search: '', category: '', state: '', severity: '', status: ''
-  });
+  const [filters, setFilters] = useState({ search: '', category: '', state: '', severity: '', status: '' });
 
-  useEffect(() => {
-    loadChallenges();
-  }, [filters, pagination.page]);
-
+  useEffect(() => { loadChallenges(); }, [filters, pagination.page]);
   const loadChallenges = async () => {
     setLoading(true);
     try {
-      const params: any = { page: pagination.page, limit: 12 };
+      const params: any = { page: pagination.page, limit: 9 };
       if (filters.category) params.category = filters.category;
       if (filters.state) params.state = filters.state;
       if (filters.severity) params.severity = filters.severity;
       if (filters.status) params.status = filters.status;
       if (filters.search) params.search = filters.search;
       const res = await challengesAPI.getAll(params);
-      setChallenges(res.data.challenges);
-      setPagination(res.data.pagination);
-    } catch {
-      setChallenges(demoChallenges);
-      setPagination({ page: 1, pages: 1, total: 8 });
-    }
+      setChallenges(res.data.challenges); setPagination(res.data.pagination);
+    } catch { setChallenges(demoChallenges); setPagination({ page: 1, pages: 1, total: 6 }); }
     setLoading(false);
   };
 
-  const activeFilters = Object.entries(filters).filter(([_, v]) => v).length;
+  const activeFilters = Object.entries(filters).filter(([k,v])=> k!=='search' && v).length;
 
   return (
-    <div className="container py-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Challenge Discovery</h1>
-          <p className="text-muted-foreground mt-1">
-            Explore societal challenges seeking innovative solutions
-          </p>
+    <div className="min-h-screen bg-white dark:bg-[#070A12]">
+      <div className="border-b border-slate-200/60 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
+        <div className="container py-8">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+            <div>
+              <div className="inline-flex items-center gap-2 text-xs font-semibold tracking-widest uppercase text-slate-500"><Layers className="h-3.5 w-3.5" /> Discover</div>
+              <h1 className="mt-2 text-3xl font-bold tracking-tight">Challenges</h1>
+              <p className="mt-1.5 text-sm text-slate-500 max-w-xl">Explore verified societal problems — filter by domain, severity and location, and team up to ship a solution.</p>
+            </div>
+            <Link href="/challenges/submit"><Button className="rounded-full bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 h-10 px-6 shadow-sm"><Plus className="h-4 w-4 mr-1.5" /> Submit Challenge</Button></Link>
+          </div>
+
+          <div className="mt-6 flex flex-col lg:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input placeholder="Search challenges, expertise, location..." className="pl-11 h-11 bg-white dark:bg-[#0F1420] rounded-full border-slate-200 dark:border-white/10 shadow-sm" value={filters.search} onChange={e=>setFilters({...filters, search:e.target.value})} />
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <Button variant="outline" onClick={()=>setShowFilters(!showFilters)} className="h-11 rounded-full px-5 gap-2 bg-white dark:bg-[#0F1420] border-slate-200 dark:border-white/10 dark:text-white hover:bg-slate-50 dark:hover:bg-white/10">
+                <SlidersHorizontal className="h-4 w-4" /> Filters {activeFilters>0 && <span className="h-5 min-w-5 px-1.5 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs grid place-items-center">{activeFilters}</span>}
+              </Button>
+              <Link href="/challenges/map"><Button variant="outline" className="h-11 rounded-full px-5 bg-white dark:bg-[#0F1420] border-slate-200 dark:border-white/10 dark:text-white hover:bg-slate-50 dark:hover:bg-white/10"><MapPin className="h-4 w-4 mr-1.5" /> Map</Button></Link>
+            </div>
+          </div>
+
+          {showFilters && (
+            <div className="mt-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-4 shadow-sm animate-scale-in">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <Select value={filters.category} onValueChange={v=>setFilters({...filters, category:v})}>
+                  <SelectTrigger><SelectValue placeholder="Category" /></SelectTrigger>
+                  <SelectContent>{categories.map(c=> <SelectItem key={c} value={c}>{getCategoryIcon(c)} {c}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={filters.state} onValueChange={v=>setFilters({...filters, state:v})}>
+                  <SelectTrigger><SelectValue placeholder="State" /></SelectTrigger>
+                  <SelectContent>{states.map(s=> <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={filters.severity} onValueChange={v=>setFilters({...filters, severity:v})}>
+                  <SelectTrigger><SelectValue placeholder="Severity" /></SelectTrigger>
+                  <SelectContent>{severities.map(s=> <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={filters.status} onValueChange={v=>setFilters({...filters, status:v})}>
+                  <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectContent>{statuses.map(s=> <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
+                </Select>
+                {activeFilters>0 ? (
+                  <Button variant="ghost" onClick={()=>setFilters({search: filters.search, category:'', state:'', severity:'', status:''})} className="rounded-full"><X className="h-4 w-4 mr-1" /> Clear filters</Button>
+                ) : <div className="hidden lg:block" />}
+              </div>
+              {(filters.category || filters.state || filters.severity || filters.status) && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {filters.category && <Badge className="rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900">{filters.category} <button onClick={()=>setFilters({...filters, category:''})} className="ml-1"><X className="h-3 w-3" /></button></Badge>}
+                  {filters.state && <Badge className="rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900">{filters.state} <button onClick={()=>setFilters({...filters, state:''})} className="ml-1"><X className="h-3 w-3" /></button></Badge>}
+                  {filters.severity && <Badge className="rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 capitalize">{filters.severity}</Badge>}
+                  {filters.status && <Badge className="rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 capitalize">{filters.status}</Badge>}
+                </div>
+              )}
+            </div>
+          )}
         </div>
-        <Link href="/challenges/submit">
-          <Button className="gradient-primary font-semibold shadow-sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Submit Challenge
-          </Button>
-        </Link>
       </div>
 
-      {/* Search & Filters */}
-      <div className="mb-6 space-y-3">
-        <div className="flex gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by title, description, or expertise..."
-              className="pl-10 h-11"
-              value={filters.search}
-              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-            />
-          </div>
-          <Button variant="outline" onClick={() => setShowFilters(!showFilters)} className="h-11 gap-2 font-medium">
-            <SlidersHorizontal className="h-4 w-4" />
-            Filters
-            {activeFilters > 0 && <Badge className="ml-1 h-5 px-1.5 text-[10px]">{activeFilters}</Badge>}
-          </Button>
-          <Link href="/challenges/map">
-            <Button variant="outline" className="h-11">
-              <MapPin className="h-4 w-4 mr-2" /> Map
-            </Button>
-          </Link>
+      <div className="container py-6">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm text-slate-500"><span className="font-semibold text-slate-900 dark:text-white">{challenges.length}</span> challenges · Page {pagination.page} of {pagination.pages || 1}</p>
+          <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-slate-400"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live · Updated just now</span>
         </div>
 
-        {showFilters && (
-          <Card className="border-0 shadow-card">
-            <CardContent className="p-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                <Select value={filters.category} onValueChange={(v) => setFilters({ ...filters, category: v })}>
-                  <SelectTrigger className="h-10"><SelectValue placeholder="Category" /></SelectTrigger>
-                  <SelectContent>
-                    {categories.map(c => <SelectItem key={c} value={c}>{getCategoryIcon(c)} {c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={filters.state} onValueChange={(v) => setFilters({ ...filters, state: v })}>
-                  <SelectTrigger className="h-10"><SelectValue placeholder="State" /></SelectTrigger>
-                  <SelectContent>
-                    {states.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={filters.severity} onValueChange={(v) => setFilters({ ...filters, severity: v })}>
-                  <SelectTrigger className="h-10"><SelectValue placeholder="Severity" /></SelectTrigger>
-                  <SelectContent>
-                    {severities.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={filters.status} onValueChange={(v) => setFilters({ ...filters, status: v })}>
-                  <SelectTrigger className="h-10"><SelectValue placeholder="Status" /></SelectTrigger>
-                  <SelectContent>
-                    {statuses.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                {activeFilters > 0 && (
-                  <Button variant="ghost" onClick={() => setFilters({ search: filters.search, category: '', state: '', severity: '', status: '' })} className="h-10">
-                    <X className="h-4 w-4 mr-1" /> Clear
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1,2,3,4,5,6].map(i=> <div key={i} className="rounded-2xl border border-slate-200 dark:border-white/10 p-6 space-y-3 bg-white dark:bg-[#0F1420]"><div className="h-4 w-20 rounded-full bg-slate-100 dark:bg-white/10 animate-pulse" /><div className="h-5 w-3/4 rounded bg-slate-100 dark:bg-white/10 animate-pulse" /><div className="h-3 w-1/2 rounded bg-slate-100 dark:bg-white/10 animate-pulse" /></div>)}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {challenges.map((challenge, idx)=> (
+              <Link key={challenge._id} href={`/challenges/${challenge._id}`} className="group rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-5 hover:border-slate-300 dark:hover:border-white/15 hover:shadow-lg hover:-translate-y-0.5 transition-all flex flex-col">
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <Badge className={`${getStatusColor(challenge.status)} capitalize text-[11px] rounded-full`}>{challenge.status}</Badge>
+                  <Badge className={`${getSeverityColor(challenge.severity)} capitalize text-[11px] rounded-full border-0`}>{challenge.severity}</Badge>
+                </div>
+                <h3 className="font-semibold leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">{challenge.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-slate-500 line-clamp-2">{challenge.description}</p>
+                <div className="mt-3 flex items-center gap-2 text-xs text-slate-500"><span>{getCategoryIcon(challenge.category)}</span><span className="font-medium">{challenge.category}</span><span className="opacity-30">·</span><MapPin className="h-3 w-3" />{challenge.location?.city}, {challenge.location?.state}</div>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {(challenge.suggestedExpertise||[]).slice(0,3).map((e:string)=> <span key={e} className="text-[11px] font-medium bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-full border border-transparent dark:border-white/5">{e}</span>)}
+                  {(challenge.suggestedExpertise||[]).length>3 && <span className="text-[11px] font-medium bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-full border border-transparent dark:border-white/5">+{(challenge.suggestedExpertise.length-3)}</span>}
+                </div>
+                <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-100 dark:border-white/10 text-xs text-slate-500">
+                  <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" /> {formatNumber(challenge.affectedPopulation)} affected</span>
+                  <span className="font-medium">{challenge.numberOfTeams||0} teams · {challenge.numberOfSolutions||0} solutions</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {pagination.pages>1 && (
+          <div className="flex items-center justify-center gap-2 mt-8">
+            <Button variant="outline" size="sm" disabled={pagination.page<=1} onClick={()=>setPagination({...pagination, page: pagination.page-1})} className="rounded-full border-slate-200 dark:border-white/10 dark:text-white hover:bg-slate-50 dark:hover:bg-white/10"><ChevronLeft className="h-4 w-4" /></Button>
+            <span className="text-sm text-slate-500">Page <span className="font-semibold text-slate-900 dark:text-white">{pagination.page}</span> of {pagination.pages}</span>
+            <Button variant="outline" size="sm" disabled={pagination.page>=pagination.pages} onClick={()=>setPagination({...pagination, page: pagination.page+1})} className="rounded-full border-slate-200 dark:border-white/10 dark:text-white hover:bg-slate-50 dark:hover:bg-white/10"><ChevronRight className="h-4 w-4" /></Button>
+          </div>
         )}
       </div>
-
-      {/* Results count */}
-      <div className="mb-4 text-sm text-muted-foreground font-medium">
-        {challenges.length} challenges found
-      </div>
-
-      {/* Challenge Cards */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map(i => (
-            <Card key={i} className="animate-pulse border-0 shadow-card">
-              <CardContent className="p-5">
-                <div className="h-4 bg-muted rounded w-20 mb-3" />
-                <div className="h-6 bg-muted rounded w-3/4 mb-2" />
-                <div className="h-4 bg-muted rounded w-1/2 mb-4" />
-                <div className="h-4 bg-muted rounded w-full mb-2" />
-                <div className="h-4 bg-muted rounded w-2/3" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {challenges.map((challenge) => (
-            <Link key={challenge._id} href={`/challenges/${challenge._id}`}>
-              <Card className="hover:shadow-card-hover transition-all duration-200 group h-full border-0 shadow-card">
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <Badge className={`${getStatusColor(challenge.status)} capitalize text-[11px] font-medium`}>
-                      {challenge.status}
-                    </Badge>
-                    <Badge className={`text-[11px] capitalize font-medium ${getSeverityColor(challenge.severity)}`}>
-                      {challenge.severity}
-                    </Badge>
-                  </div>
-                  <h3 className="font-semibold text-base group-hover:text-primary transition-colors duration-200 mb-2 leading-snug">
-                    {challenge.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3 leading-relaxed">
-                    {challenge.description}
-                  </p>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                    <span className="text-base">{getCategoryIcon(challenge.category)}</span>
-                    <span>{challenge.category}</span>
-                    <span className="text-border">·</span>
-                    <MapPin className="h-3 w-3" />
-                    <span>{challenge.location?.city}, {challenge.location?.state}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    {(challenge.suggestedExpertise || []).slice(0, 3).map((exp: string) => (
-                      <Badge key={exp} variant="secondary" className="text-[10px] font-medium">{exp}</Badge>
-                    ))}
-                    {(challenge.suggestedExpertise || []).length > 3 && (
-                      <Badge variant="secondary" className="text-[10px] font-medium">+{challenge.suggestedExpertise.length - 3}</Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 border-t border-border/50">
-                    <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {formatNumber(challenge.affectedPopulation)} affected</span>
-                    <span>{challenge.numberOfTeams || 0} teams</span>
-                    <span>{challenge.numberOfSolutions || 0} solutions</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {/* Pagination */}
-      {pagination.pages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-8">
-          <Button variant="outline" size="sm" disabled={pagination.page <= 1} onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm text-muted-foreground font-medium">
-            Page {pagination.page} of {pagination.pages}
-          </span>
-          <Button variant="outline" size="sm" disabled={pagination.page >= pagination.pages} onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

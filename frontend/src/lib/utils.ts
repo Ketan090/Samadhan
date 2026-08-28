@@ -46,7 +46,7 @@ export function getSeverityColor(severity: string): string {
     'medium': 'bg-amber-100 text-amber-700 border-transparent dark:bg-amber-900/40 dark:text-amber-400',
     'low': 'bg-emerald-100 text-emerald-700 border-transparent dark:bg-emerald-900/40 dark:text-emerald-400'
   };
-  return colors[severity] || 'bg-slate-100 text-slate-600 border-transparent';
+  return colors[severity] || 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-transparent dark:border-white/10';
 }
 
 export function getCategoryIcon(category: string): string {

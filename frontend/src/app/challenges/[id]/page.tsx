@@ -3,15 +3,10 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { challengesAPI, solutionsAPI, aiAPI } from '@/lib/api';
+import { challengesAPI, solutionsAPI } from '@/lib/api';
 import { formatNumber, formatDate, getStatusColor, getSeverityColor, getCategoryIcon } from '@/lib/utils';
-import {
-  MapPin, Users, Calendar, AlertTriangle, Lightbulb, Brain, Target,
-  ArrowRight, Building2, CheckCircle2, Clock, Shield, Rocket,
-  FileText, Link as LinkIcon, TrendingUp, Zap, ChevronRight
-} from 'lucide-react';
+import { MapPin, Users, Calendar, AlertTriangle, Lightbulb, Brain, Target, ArrowRight, Building2, CheckCircle2, Clock, Shield, Rocket, FileText, TrendingUp, Zap, ChevronRight, ExternalLink, Layers, GraduationCap, Factory } from 'lucide-react';
 
 export default function ChallengeDetailPage() {
   const params = useParams();
@@ -19,55 +14,27 @@ export default function ChallengeDetailPage() {
   const [solutions, setSolutions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadData();
-  }, [params.id]);
+  useEffect(() => { loadData(); }, [params.id]);
 
   const loadData = async () => {
     try {
-      const [challengeRes, solutionsRes] = await Promise.all([
-        challengesAPI.getById(params.id as string),
-        solutionsAPI.getAll({ challenge: params.id as string })
-      ]);
-      setChallenge(challengeRes.data.challenge);
-      setSolutions(solutionsRes.data.solutions);
+      const [challengeRes, solutionsRes] = await Promise.all([challengesAPI.getById(params.id as string), solutionsAPI.getAll({ challenge: params.id as string })]);
+      setChallenge(challengeRes.data.challenge); setSolutions(solutionsRes.data.solutions);
     } catch {
-      // Demo data
       setChallenge({
-        _id: params.id,
-        title: 'Smart Waste Collection for Urban Wards',
-        description: 'Ranchi city generates approximately 450 tonnes of municipal solid waste daily, but the current collection efficiency is only about 40%. Many wards, especially in peripheral areas, have irregular waste pickup leading to unhygienic conditions, disease outbreaks, and environmental degradation. We need an intelligent waste management system that can optimize collection routes, predict waste generation patterns, and enable real-time tracking of waste collection vehicles.\n\nThis challenge requires a multi-faceted approach combining IoT sensors, AI-powered route optimization, mobile applications for citizens and workers, and a dashboard for administrators. The solution should be scalable, affordable, and adaptable to Indian urban conditions.',
-        category: 'Environment',
-        subcategory: 'Waste Management',
-        location: { city: 'Ranchi', state: 'Jharkhand', pincode: '834001' },
-        affectedPopulation: 25000,
-        urgency: 'high',
-        severity: 'high',
-        status: 'open',
-        verificationStatus: 'verified',
+        _id: params.id, title: 'Smart Waste Collection for Urban Wards', description: 'Ranchi city generates approximately 450 tonnes of municipal solid waste daily, but the current collection efficiency is only about 40%. Many wards, especially in peripheral areas, have irregular waste pickup leading to unhygienic conditions, disease outbreaks, and environmental degradation. We need an intelligent waste management system that can optimize collection routes, predict waste generation patterns, and enable real-time tracking of waste collection vehicles.\n\nThis challenge requires a multi-faceted approach combining IoT sensors, AI-powered route optimization, mobile applications for citizens and workers, and a dashboard for administrators. The solution should be scalable, affordable, and adaptable to Indian urban conditions.',
+        category: 'Environment', subcategory: 'Waste Management', location: { city: 'Ranchi', state: 'Jharkhand', pincode: '834001' },
+        affectedPopulation: 25000, urgency: 'high', severity: 'high', status: 'open', verificationStatus: 'verified',
         currentConsequences: 'Open dumping, water contamination, air pollution from burning waste, spread of vector-borne diseases, unpleasant living conditions for residents in multiple wards. The waste accumulation has led to a 15% increase in dengue and malaria cases in affected wards.',
         existingAttempts: 'Basic door-to-door collection exists but is irregular. Waste segregation at source is minimal. No real-time tracking of collection vehicles. Previous attempts at setting up community composting centers failed due to lack of monitoring.',
         desiredOutcome: 'An integrated smart waste management system with IoT-enabled bins, optimized collection routes, real-time tracking, and a mobile app for citizen reporting.',
         constraints: 'Budget constraints in municipal corporation. Limited technical expertise among waste workers. Diverse waste types from different areas. Power supply issues in some peripheral wards.',
         availableResources: 'Existing waste collection fleet of 25 vehicles. Municipal land for waste processing. Some budget allocation under Swachh Bharat Mission.',
         suggestedExpertise: ['IoT', 'AI', 'Data Science', 'Operations Research', 'Environmental Engineering'],
-        submittedBy: { name: 'Rahul Singh', role: 'citizen', _id: '1' },
-        organization: { name: 'District Administration Ranchi', type: 'government' },
-        verifiedBy: { name: 'Rajesh Kumar', role: 'government' },
-        verifiedAt: '2024-01-15',
-        aiAnalysis: {
-          summary: 'A critical urban waste management challenge affecting 25,000+ residents in Ranchi. Current collection efficiency is only 40% with no route optimization or real-time monitoring. The solution requires IoT deployment, AI-based route planning, and citizen engagement.',
-          classification: 'Environment → Waste Management → Urban Waste Collection',
-          impactScore: 78,
-          urgencyScore: 82,
-          requiredExpertise: ['IoT', 'Data Science', 'Environmental Engineering', 'Operations Research']
-        },
-        numberOfTeams: 3,
-        numberOfSolutions: 2,
-        participatingOrganizations: [{ name: 'IIT Bombay', type: 'university' }, { name: 'GreenTech Innovations', type: 'industry' }],
-        tags: ['waste-management', 'smart-city', 'iot', 'urban'],
-        createdAt: '2024-01-10',
-        evidence: { images: [], documents: [], videos: [], links: ['https://swachhbharat.gov.in'] }
+        submittedBy: { name: 'Rahul Singh', role: 'citizen' }, verifiedBy: { name: 'Rajesh Kumar', role: 'government' }, verifiedAt: '2024-01-15',
+        aiAnalysis: { summary: 'A critical urban waste management challenge affecting 25,000+ residents in Ranchi. Current collection efficiency is only 40% with no route optimization or real-time monitoring.', classification: 'Environment → Waste Management → Urban Waste Collection', impactScore: 78, urgencyScore: 82, requiredExpertise: ['IoT', 'Data Science', 'Environmental Engineering', 'Operations Research'] },
+        numberOfTeams: 3, numberOfSolutions: 2, participatingOrganizations: [{ name: 'IIT Bombay', type: 'university' }, { name: 'GreenTech Innovations', type: 'industry' }],
+        evidence: { links: ['https://swachhbharat.gov.in'] }, createdAt: '2024-01-10'
       });
       setSolutions([
         { _id: 's1', title: 'SmartBin: IoT-Enabled Waste Collection Optimization System', status: 'under-review', scorecard: { totalScore: 7.85 }, proposedApproach: 'IoT sensors + AI route optimization', technology: ['IoT Sensors', 'Machine Learning', 'Mobile App', 'Cloud Platform'] },
@@ -77,277 +44,117 @@ export default function ChallengeDetailPage() {
     setLoading(false);
   };
 
-  if (loading) {
-    return (
-      <div className="container py-8">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-muted rounded w-1/3" />
-          <div className="h-4 bg-muted rounded w-1/4" />
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-4">
-              <div className="h-64 bg-muted rounded-lg" />
-            </div>
-            <div className="space-y-4">
-              <div className="h-40 bg-muted rounded-lg" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  if (loading) return <div className="min-h-screen bg-white dark:bg-[#070A12]"><div className="container py-8 animate-pulse space-y-4"><div className="h-6 bg-slate-100 dark:bg-white/10 rounded w-1/3" /><div className="h-4 bg-slate-100 dark:bg-white/10 rounded w-1/4" /><div className="grid lg:grid-cols-3 gap-6"><div className="lg:col-span-2 h-64 bg-slate-100 dark:bg-white/10 rounded-2xl" /><div className="h-64 bg-slate-100 dark:bg-white/10 rounded-2xl" /></div></div></div>;
   if (!challenge) return null;
 
   return (
-    <div className="container py-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-        <Link href="/challenges" className="hover:text-foreground">Challenges</Link>
-        <ChevronRight className="h-3 w-3" />
-        <span className="text-foreground truncate">{challenge.title}</span>
+    <div className="min-h-screen bg-white dark:bg-[#070A12]">
+      <div className="border-b border-slate-200/60 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
+        <div className="container py-6">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-3">
+            <Link href="/challenges" className="hover:text-slate-900 dark:hover:text-white font-medium">Challenges</Link><ChevronRight className="h-3 w-3" /><span className="text-slate-900 dark:text-white font-medium truncate">{challenge.title}</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <Badge className={`${getStatusColor(challenge.status)} capitalize rounded-full`}>{challenge.status}</Badge>
+            <Badge className={`${getSeverityColor(challenge.severity)} capitalize rounded-full border-0`}>{challenge.severity}</Badge>
+            {challenge.verificationStatus === 'verified' && <Badge className="bg-emerald-500 text-white rounded-full gap-1 border-0"><CheckCircle2 className="h-3 w-3" /> Verified</Badge>}
+            <Badge variant="outline" className="rounded-full border-slate-200 dark:border-white/10 dark:text-slate-300">{getCategoryIcon(challenge.category)} {challenge.category}{challenge.subcategory ? ` · ${challenge.subcategory}` : ''}</Badge>
+          </div>
+          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight leading-tight">{challenge.title}</h1>
+          <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-slate-500">
+            <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{challenge.location?.city}, {challenge.location?.state}{challenge.location?.pincode ? ` · ${challenge.location.pincode}` : ''}</span>
+            <span className="h-3 w-px bg-slate-200 dark:bg-white/10 hidden sm:block" />
+            <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{formatDate(challenge.createdAt)}</span>
+            <span className="h-3 w-px bg-slate-200 dark:bg-white/10 hidden sm:block" />
+            <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5" />{formatNumber(challenge.affectedPopulation)} affected</span>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Title & Status */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Badge className={`${getStatusColor(challenge.status)} capitalize`}>{challenge.status}</Badge>
-              <Badge variant="outline" className={`${getSeverityColor(challenge.severity)} capitalize`}>
-                {challenge.severity} severity
-              </Badge>
-              {challenge.verificationStatus === 'verified' && (
-                <Badge className="bg-green-100 text-green-700"><CheckCircle2 className="h-3 w-3 mr-1" /> Verified</Badge>
-              )}
+      <div className="container py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-5 lg:p-6">
+              <div className="flex items-center gap-2 mb-3"><div className="h-8 w-8 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 grid place-items-center"><Lightbulb className="h-4 w-4" /></div><h2 className="font-semibold">Problem Description</h2></div>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600 dark:text-slate-400">{challenge.description}</p>
             </div>
-            <h1 className="text-2xl lg:text-3xl font-bold">{challenge.title}</h1>
-            <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1"><span className="text-base">{getCategoryIcon(challenge.category)}</span> {challenge.category}{challenge.subcategory ? ` → ${challenge.subcategory}` : ''}</span>
-              <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {challenge.location?.city}, {challenge.location?.state}</span>
-              <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(challenge.createdAt)}</span>
-            </div>
-          </div>
 
-          {/* Description */}
-          <Card>
-            <CardHeader><CardTitle className="text-lg">Problem Description</CardTitle></CardHeader>
-            <CardContent>
-              <p className="whitespace-pre-wrap text-muted-foreground">{challenge.description}</p>
-            </CardContent>
-          </Card>
-
-          {/* Impact & Consequences */}
-          <Card>
-            <CardHeader><CardTitle className="text-lg">Impact & Consequences</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              {challenge.currentConsequences && (
-                <div>
-                  <h4 className="font-medium text-sm mb-1 flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-orange-500" /> Current Consequences
-                  </h4>
-                  <p className="text-sm text-muted-foreground">{challenge.currentConsequences}</p>
-                </div>
-              )}
-              {challenge.existingAttempts && (
-                <div>
-                  <h4 className="font-medium text-sm mb-1 flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-blue-500" /> Existing Attempts
-                  </h4>
-                  <p className="text-sm text-muted-foreground">{challenge.existingAttempts}</p>
-                </div>
-              )}
-              <div>
-                <h4 className="font-medium text-sm mb-1 flex items-center gap-2">
-                  <Target className="h-4 w-4 text-green-500" /> Desired Outcome
-                </h4>
-                <p className="text-sm text-muted-foreground">{challenge.desiredOutcome}</p>
+            <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-5 lg:p-6">
+              <h2 className="font-semibold mb-4 flex items-center gap-2"><Target className="h-4 w-4 text-emerald-500" /> Impact & Path Forward</h2>
+              <div className="space-y-4">
+                {challenge.currentConsequences && <div className="rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/30 p-4"><div className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300 flex items-center gap-1.5 mb-1"><AlertTriangle className="h-3.5 w-3.5" /> Current Consequences</div><p className="text-sm text-slate-600 dark:text-slate-400">{challenge.currentConsequences}</p></div>}
+                {challenge.existingAttempts && <div><div className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 mb-1"><FileText className="h-3.5 w-3.5 text-blue-500" /> Existing Attempts</div><p className="text-sm text-slate-600 dark:text-slate-400">{challenge.existingAttempts}</p></div>}
+                <div><div className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 mb-1"><Rocket className="h-3.5 w-3.5 text-emerald-500" /> Desired Outcome</div><p className="text-sm text-slate-600 dark:text-slate-400">{challenge.desiredOutcome}</p></div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Constraints & Resources */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {challenge.constraints && (
-              <Card>
-                <CardHeader><CardTitle className="text-sm">Constraints</CardTitle></CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">{challenge.constraints}</p>
-                </CardContent>
-              </Card>
-            )}
-            {challenge.availableResources && (
-              <Card>
-                <CardHeader><CardTitle className="text-sm">Available Resources</CardTitle></CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">{challenge.availableResources}</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              {challenge.constraints && <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-5"><div className="text-sm font-semibold mb-2 flex items-center gap-1.5"><Shield className="h-4 w-4 text-slate-400" /> Constraints</div><p className="text-sm text-slate-600 dark:text-slate-400">{challenge.constraints}</p></div>}
+              {challenge.availableResources && <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-5"><div className="text-sm font-semibold mb-2 flex items-center gap-1.5"><Zap className="h-4 w-4 text-amber-500" /> Available Resources</div><p className="text-sm text-slate-600 dark:text-slate-400">{challenge.availableResources}</p></div>}
+            </div>
 
-          {/* Solutions */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Solutions ({solutions.length})</CardTitle>
-              <Link href={`/solutions/submit?challenge=${challenge._id}`}>
-                <Button size="sm" className="gradient-primary">Submit Solution</Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              {solutions.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  No solutions submitted yet. Be the first to propose a solution!
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {solutions.map((sol) => (
-                    <Link key={sol._id} href={`/solutions/${sol._id}`}>
-                      <div className="border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h4 className="font-medium">{sol.title}</h4>
-                            <p className="text-sm text-muted-foreground mt-1">{sol.proposedApproach}</p>
-                            <div className="flex gap-1 mt-2">
-                              {(sol.technology || []).slice(0, 3).map((t: string) => (
-                                <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <Badge className={`${getStatusColor(sol.status)} capitalize text-xs`}>{sol.status}</Badge>
-                            {sol.scorecard && (
-                              <div className="mt-2 text-lg font-bold text-primary">{sol.scorecard.totalScore}/10</div>
-                            )}
-                          </div>
+            <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] overflow-hidden">
+              <div className="p-5 flex items-center justify-between border-b border-slate-100 dark:border-white/10">
+                <h2 className="font-semibold flex items-center gap-2"><Rocket className="h-4 w-4" /> Solutions <span className="text-slate-400 font-normal">· {solutions.length}</span></h2>
+                <Link href={`/solutions/submit?challenge=${challenge._id}`}><Button size="sm" className="rounded-full bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900">Submit Solution</Button></Link>
+              </div>
+              <div className="p-4">
+                {solutions.length === 0 ? <div className="text-center py-8"><div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-white/5 grid place-items-center mx-auto"><Lightbulb className="h-5 w-5 text-slate-400" /></div><p className="text-sm text-slate-500 mt-3">No solutions yet. Be the first!</p></div> : (
+                  <div className="space-y-3">
+                    {solutions.map(sol => (
+                      <Link key={sol._id} href={`/solutions/${sol._id}`} className="block rounded-2xl border border-slate-200 dark:border-white/10 p-4 hover:border-slate-300 dark:hover:border-white/15 hover:bg-slate-50/50 dark:hover:bg-white/[0.03] transition-colors group">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1"><div className="font-semibold text-sm leading-snug group-hover:text-blue-600 transition-colors">{sol.title}</div><div className="text-xs text-slate-500 mt-1">{sol.proposedApproach}</div><div className="flex flex-wrap gap-1.5 mt-2">{(sol.technology||[]).slice(0,3).map((t:string)=><Badge key={t} variant="secondary" className="text-[11px] rounded-full bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-slate-300 border border-transparent">{t}</Badge>)}</div></div>
+                          <div className="text-right shrink-0"><Badge className={`${getStatusColor(sol.status)} capitalize text-[11px] rounded-full`}>{sol.status}</Badge>{sol.scorecard && <div className="mt-1 text-sm font-bold text-blue-600">{sol.scorecard.totalScore}/10</div>}</div>
                         </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Key Metrics */}
-          <Card>
-            <CardHeader><CardTitle className="text-sm">Key Metrics</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground flex items-center gap-2"><Users className="h-4 w-4" /> Affected Population</span>
-                <span className="font-bold">{formatNumber(challenge.affectedPopulation)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground flex items-center gap-2"><Zap className="h-4 w-4" /> Urgency</span>
-                <Badge variant="outline" className={`capitalize ${getSeverityColor(challenge.urgency)}`}>{challenge.urgency}</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground flex items-center gap-2"><Rocket className="h-4 w-4" /> Teams</span>
-                <span className="font-bold">{challenge.numberOfTeams || 0}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground flex items-center gap-2"><Lightbulb className="h-4 w-4" /> Solutions</span>
-                <span className="font-bold">{challenge.numberOfSolutions || 0}</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Required Expertise */}
-          <Card>
-            <CardHeader><CardTitle className="text-sm">Required Expertise</CardTitle></CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {(challenge.suggestedExpertise || []).map((exp: string) => (
-                  <Badge key={exp} variant="secondary">{exp}</Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Participating Organizations */}
-          <Card>
-            <CardHeader><CardTitle className="text-sm">Participating Organizations</CardTitle></CardHeader>
-            <CardContent>
-              {(challenge.participatingOrganizations || []).length === 0 ? (
-                <p className="text-sm text-muted-foreground">No organizations participating yet</p>
-              ) : (
-                <div className="space-y-2">
-                  {challenge.participatingOrganizations.map((org: any, i: number) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{typeof org === 'object' ? org.name : org}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* AI Analysis */}
-          {challenge.aiAnalysis && (
-            <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-900">
-              <CardHeader>
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Brain className="h-4 w-4 text-blue-600" />
-                  AI Analysis
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-xs text-blue-700 dark:text-blue-400 italic">
-                  AI-assisted analysis — requires human verification
-                </p>
-                <div>
-                  <h5 className="text-xs font-medium mb-1">Classification</h5>
-                  <p className="text-sm">{challenge.aiAnalysis.classification}</p>
-                </div>
-                <div>
-                  <h5 className="text-xs font-medium mb-1">Impact Score</h5>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-2 bg-blue-100 rounded-full">
-                      <div className="h-2 bg-blue-500 rounded-full" style={{ width: `${challenge.aiAnalysis.impactScore}%` }} />
-                    </div>
-                    <span className="text-sm font-bold">{challenge.aiAnalysis.impactScore}/100</span>
-                  </div>
-                </div>
-                <div>
-                  <h5 className="text-xs font-medium mb-1">Urgency Score</h5>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-2 bg-orange-100 rounded-full">
-                      <div className="h-2 bg-orange-500 rounded-full" style={{ width: `${challenge.aiAnalysis.urgencyScore}%` }} />
-                    </div>
-                    <span className="text-sm font-bold">{challenge.aiAnalysis.urgencyScore}/100</span>
-                  </div>
-                </div>
-                <div>
-                  <h5 className="text-xs font-medium mb-1">Recommended Expertise</h5>
-                  <div className="flex flex-wrap gap-1">
-                    {(challenge.aiAnalysis.requiredExpertise || []).map((e: string) => (
-                      <Badge key={e} variant="outline" className="text-xs">{e}</Badge>
+                      </Link>
                     ))}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                )}
+              </div>
+            </div>
+          </div>
 
-          {/* Actions */}
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <Link href={`/solutions/submit?challenge=${challenge._id}`} className="block">
-                <Button className="w-full gradient-primary">
-                  <Lightbulb className="h-4 w-4 mr-2" /> Submit Solution
-                </Button>
-              </Link>
-              <Link href="/collaborate" className="block">
-                <Button variant="outline" className="w-full">
-                  <Users className="h-4 w-4 mr-2" /> Collaborate
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-5">
+              <div className="text-xs font-bold tracking-widest uppercase text-slate-500 mb-3">Key Metrics</div>
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center justify-between"><span className="text-slate-500 flex items-center gap-2"><Users className="h-4 w-4" /> Affected</span><span className="font-bold">{formatNumber(challenge.affectedPopulation)}</span></div>
+                <div className="flex items-center justify-between"><span className="text-slate-500 flex items-center gap-1.5"><Zap className="h-4 w-4" /> Urgency</span><Badge variant="outline" className="capitalize rounded-full border-slate-200 dark:border-white/10 dark:text-slate-300">{challenge.urgency}</Badge></div>
+                <div className="flex items-center justify-between"><span className="text-slate-500 flex items-center gap-2"><Rocket className="h-4 w-4" /> Teams</span><span className="font-bold">{challenge.numberOfTeams||0}</span></div>
+                <div className="flex items-center justify-between"><span className="text-slate-500 flex items-center gap-2"><Lightbulb className="h-4 w-4" /> Solutions</span><span className="font-bold">{challenge.numberOfSolutions||0}</span></div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-5">
+              <div className="text-xs font-bold tracking-widest uppercase text-slate-500 mb-3">Required Expertise</div>
+              <div className="flex flex-wrap gap-1.5">{(challenge.suggestedExpertise||[]).map((e:string)=><Badge key={e} variant="secondary" className="rounded-full bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-slate-300 border border-transparent">{e}</Badge>)}</div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-5">
+              <div className="text-xs font-bold tracking-widest uppercase text-slate-500 mb-3">Participating</div>
+              {(challenge.participatingOrganizations||[]).length===0 ? <p className="text-sm text-slate-500">No organizations yet</p> : <div className="space-y-2">{challenge.participatingOrganizations.map((org:any,i:number)=><div key={i} className="flex items-center gap-2 text-sm"><div className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-white/10 grid place-items-center"><Building2 className="h-3.5 w-3.5" /></div>{typeof org==='object'?org.name:org}</div>)}</div>}
+            </div>
+
+            {challenge.aiAnalysis && (
+              <div className="rounded-2xl border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20 p-5">
+                <div className="text-sm font-bold flex items-center gap-2 mb-1"><Brain className="h-4 w-4 text-blue-600" /> AI Analysis <Badge className="bg-blue-600 text-white text-[10px] rounded-full border-0">AI</Badge></div>
+                <p className="text-xs text-blue-700/70 dark:text-blue-300/70 italic mb-3">AI-assisted — requires human verification</p>
+                <div className="space-y-3">
+                  <div><div className="text-xs font-medium text-slate-600 dark:text-slate-400">Classification</div><div className="text-sm font-medium">{challenge.aiAnalysis.classification}</div></div>
+                  <div><div className="flex justify-between text-xs mb-1"><span className="text-slate-500">Impact Score</span><span className="font-bold">{challenge.aiAnalysis.impactScore}/100</span></div><div className="h-1.5 bg-blue-100 dark:bg-white/10 rounded-full"><div className="h-1.5 bg-blue-600 rounded-full" style={{width:`${challenge.aiAnalysis.impactScore}%`}} /></div></div>
+                  <div><div className="flex justify-between text-xs mb-1"><span className="text-slate-500">Urgency Score</span><span className="font-bold">{challenge.aiAnalysis.urgencyScore}/100</span></div><div className="h-1.5 bg-orange-100 dark:bg-white/10 rounded-full"><div className="h-1.5 bg-orange-500 rounded-full" style={{width:`${challenge.aiAnalysis.urgencyScore}%`}} /></div></div>
+                  <div className="flex flex-wrap gap-1">{(challenge.aiAnalysis.requiredExpertise||[]).map((e:string)=><Badge key={e} variant="outline" className="text-xs rounded-full bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 dark:text-slate-300">{e}</Badge>)}</div>
+                </div>
+              </div>
+            )}
+
+            <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-4 space-y-2">
+              <Link href={`/solutions/submit?challenge=${challenge._id}`} className="block"><Button className="w-full rounded-full bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900"><Lightbulb className="h-4 w-4 mr-2" /> Submit Solution</Button></Link>
+              <Link href="/collaborate" className="block"><Button variant="outline" className="w-full rounded-full border-slate-200 dark:border-white/10 dark:text-white hover:bg-slate-50 dark:hover:bg-white/10"><Users className="h-4 w-4 mr-2" /> Collaborate</Button></Link>
+              {challenge.evidence?.links?.length>0 && <a href={challenge.evidence.links[0]} target="_blank" className="flex items-center justify-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 py-2"><ExternalLink className="h-3 w-3" /> View evidence</a>}
+            </div>
+          </div>
         </div>
       </div>
     </div>

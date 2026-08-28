@@ -8,8 +8,8 @@ const connectDB = async (): Promise<void> => {
     const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/samadhanhub');
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
-    console.error('MongoDB connection error:', error);
-    process.exit(1);
+    console.warn('MongoDB not available — running in demo mode without DB. Set MONGODB_URI to a valid Atlas URI to enable persistence.');
+    console.warn((error as any)?.message || error);
   }
 };
 

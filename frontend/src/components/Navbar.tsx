@@ -1,15 +1,12 @@
 'use client';
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import {
-  Globe, Menu, X, Sun, Moon, User, LogOut, ChevronDown,
-  LayoutDashboard, Lightbulb, Map, Search, Bell
-} from 'lucide-react';
+import { Globe, Menu, X, Sun, Moon, User, LogOut, ChevronDown, LayoutDashboard, Lightbulb, Map, Search, Bell, Command } from 'lucide-react';
 
 const navLinks = [
   { href: '/challenges', label: 'Challenges', icon: Lightbulb },
@@ -17,151 +14,118 @@ const navLinks = [
   { href: '/collaborate', label: 'Collaborate', icon: Globe },
   { href: '/solutions', label: 'Solutions', icon: LayoutDashboard },
 ];
+const portalLinks = [
+  { href: '/university', label: 'University' },
+  { href: '/industry', label: 'Industry' },
+  { href: '/government', label: 'Government' },
+  { href: '/impact', label: 'Impact' },
+];
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [search, setSearch] = useState('');
 
-  const userMenuBg = theme === 'dark' ? '#1e293b' : '#ffffff';
-  const mobileMenuBg = theme === 'dark' ? '#0c1222' : '#ffffff';
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (search.trim()) router.push(`/search?q=${encodeURIComponent(search)}`);
+  };
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-border/50 glass">
-      <div className="container flex h-16 items-center justify-between">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm shadow-sm group-hover:shadow-md transition-shadow">
-            S
+    <nav className="sticky top-0 z-50 w-full">
+      <div className="h-[2px] w-full bg-gradient-to-r from-[#FF9933] via-white to-[#138808] opacity-80" />
+      <div className="bg-white/80 dark:bg-[#0B0F1A]/80 backdrop-blur-2xl backdrop-saturate-150 border-b border-slate-200/60 dark:border-white/[0.06] supports-[backdrop-filter]:bg-white/70">
+        <div className="container flex h-[64px] items-center justify-between gap-4">
+          <div className="flex items-center gap-6">
+            <Link href="/" className="flex items-center gap-2.5 group shrink-0 min-w-0">
+              <div className="h-9 w-9 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-bold text-[15px] tracking-tight shadow-sm group-hover:shadow-md group-hover:-translate-y-[1px] transition-all shrink-0">S</div>
+              <span className="text-[17px] font-bold tracking-tight text-slate-900 dark:text-white hidden sm:inline whitespace-nowrap shrink-0">SamadhanHub</span>
+              <span className="hidden sm:inline-flex items-center rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-[10px] font-bold px-2 py-0.5 tracking-wide shrink-0">BETA</span>
+            </Link>
+            <div className="hidden lg:flex items-center gap-1 ml-2">
+              {navLinks.map(link => {
+                const Icon = link.icon;
+                const active = pathname === link.href || pathname.startsWith(link.href + '/');
+                return (
+                  <Link key={link.href} href={link.href} className={cn("inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors", active ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/10")}>
+                    <Icon className="h-3.5 w-3.5" />{link.label}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-          <span className="text-lg font-bold tracking-tight hidden sm:block">
-            SamadhanHub
-          </span>
-        </Link>
 
-        {/* Desktop Nav */}
-        <div className="hidden md:flex items-center gap-0.5">
-          {navLinks.map((link) => {
-            const Icon = link.icon;
-            const isActive = pathname === link.href || pathname.startsWith(link.href + '/');
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-150",
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {link.label}
-              </Link>
-            );
-          })}
+          <form onSubmit={handleSearch} className="hidden md:flex items-center flex-1 max-w-[420px] mx-4 min-w-0">
+            <div className="relative w-full group">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-slate-900 dark:group-focus-within:text-white transition-colors shrink-0" />
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search challenges..." className="w-full h-9 pl-10 pr-4 xl:pr-[68px] rounded-full bg-slate-100 dark:bg-white/[0.06] border border-transparent hover:bg-white hover:border-slate-200 dark:hover:bg-white/[0.08] focus:bg-white dark:focus:bg-white/[0.1] focus:border-slate-200 dark:focus:border-white/15 text-[13px] placeholder:text-slate-400 placeholder:truncate focus:outline-none transition-all truncate" />
+              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 hidden xl:inline-flex items-center gap-1 rounded-full bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 px-2 py-1 text-[10px] font-medium text-slate-500 pointer-events-none"><Command className="h-3 w-3" />K</span>
+            </div>
+          </form>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full bg-slate-100 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 text-slate-600 dark:text-amber-400 hover:text-slate-900 dark:hover:text-amber-300 hover:bg-white dark:hover:bg-white/15 shadow-sm" onClick={toggleTheme}>
+              {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+            </Button>
+            {user ? (
+              <>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full relative text-slate-500 hover:text-slate-900"><Bell className="h-4 w-4" /><span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-orange-500 ring-2 ring-white dark:ring-[#0B0F1A]" /></Button>
+                <div className="relative">
+                  <button onClick={() => setUserMenuOpen(!userMenuOpen)} className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 transition-colors">
+                    <span className="h-7 w-7 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center text-xs font-bold">{user.name?.[0]?.toUpperCase()}</span>
+                    <span className="hidden lg:block text-[13px] font-medium max-w-[110px] truncate">{user.name}</span>
+                    <ChevronDown className={cn("h-3.5 w-3.5 text-slate-400 transition-transform", userMenuOpen && "rotate-180")} />
+                  </button>
+                  {userMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
+                      <div className="absolute right-0 top-full mt-2 w-60 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#111827] shadow-xl p-1.5 z-50 animate-scale-in">
+                        <div className="px-3 py-2.5 mb-1"><p className="text-sm font-semibold">{user.name}</p><p className="text-xs text-slate-500 capitalize">{user.role}</p></div>
+                        <Link href={`/${user.role}`} onClick={()=>setUserMenuOpen(false)} className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"><LayoutDashboard className="h-4 w-4" /> Dashboard</Link>
+                        <button onClick={()=>{logout();setUserMenuOpen(false)}} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 transition-colors"><LogOut className="h-4 w-4" /> Logout</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link href="/auth/login"><Button variant="ghost" size="sm" className="h-9 rounded-full px-4 text-[13px] font-medium">Sign in</Button></Link>
+                <Link href="/challenges/submit"><Button size="sm" className="h-9 rounded-full px-5 text-[13px] font-semibold bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 shadow-sm">Submit Challenge</Button></Link>
+              </div>
+            )}
+            <Button variant="ghost" size="icon" className="lg:hidden h-9 w-9 rounded-full" onClick={()=>setMobileMenuOpen(!mobileMenuOpen)}>{mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}</Button>
+          </div>
         </div>
 
-        {/* Right Actions */}
-        <div className="flex items-center gap-1">
-          <Link href="/search">
-            <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground">
-              <Search className="h-4 w-4" />
-            </Button>
-          </Link>
-          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground" onClick={toggleTheme}>
-            {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-          </Button>
-
-          {user ? (
-            <>
-              <Button variant="ghost" size="icon" className="h-9 w-9 relative text-muted-foreground hover:text-foreground">
-                <Bell className="h-4 w-4" />
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500" />
-              </Button>
-              <div className="relative">
-                <Button variant="ghost" size="sm" onClick={() => setUserMenuOpen(!userMenuOpen)} className="gap-2 h-9 px-2.5">
-                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="h-3.5 w-3.5 text-primary" />
-                  </div>
-                  <span className="hidden lg:block text-[13px] font-medium max-w-[100px] truncate">{user.name}</span>
-                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                </Button>
-                {userMenuOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
-                    <div
-                      className="absolute right-0 top-full mt-2 w-52 rounded-xl border border-border p-1 shadow-elevated z-[100]"
-                      style={{ backgroundColor: userMenuBg }}
-                    >
-                      <div className="px-3 py-2.5 border-b border-border mb-1" style={{ backgroundColor: userMenuBg }}>
-                        <p className="text-sm font-medium truncate">{user.name}</p>
-                        <p className="text-[11px] text-muted-foreground capitalize">{user.role}</p>
-                      </div>
-                      <Link href={`/${user.role}`} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-accent transition-colors" onClick={() => setUserMenuOpen(false)}>
-                        <LayoutDashboard className="h-4 w-4" /> <span>Dashboard</span>
-                      </Link>
-                      <button className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-accent text-red-600 transition-colors" onClick={() => { logout(); setUserMenuOpen(false); }}>
-                        <LogOut className="h-4 w-4" /> <span>Logout</span>
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Link href="/auth/login">
-                <Button variant="ghost" size="sm" className="h-9 text-[13px] font-medium">Sign In</Button>
-              </Link>
-              <Link href="/challenges/submit">
-                <Button size="sm" className="gradient-primary h-9 text-[13px] font-medium shadow-sm">Submit Challenge</Button>
-              </Link>
-            </div>
-          )}
-
-          {/* Mobile Menu Button */}
-          <Button variant="ghost" size="icon" className="md:hidden h-9 w-9 text-muted-foreground hover:text-foreground" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
+        <div className="hidden md:block border-t border-slate-100 dark:border-white/[0.04]">
+          <div className="container flex items-center gap-1 h-[36px] overflow-x-auto">
+            {portalLinks.map(l => {
+              const active = pathname === l.href || pathname.startsWith(l.href + '/');
+              return <Link key={l.href} href={l.href} className={cn("px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors", active ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white")}>{l.label}</Link>
+            })}
+            <span className="ml-auto hidden xl:inline-flex items-center gap-1.5 text-xs text-slate-400"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> {user ? `${user.role} mode` : '425K+ lives impacted · 156 challenges live'}</span>
+          </div>
         </div>
       </div>
 
-      {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border" style={{ backgroundColor: mobileMenuBg }}>
-          <div className="container py-3 space-y-0.5">
-            {navLinks.map((link) => {
+        <div className="lg:hidden border-t border-slate-200 dark:border-white/10 bg-white dark:bg-[#0B0F1A] animate-slide-up">
+          <div className="container py-4 space-y-1">
+            <form onSubmit={handleSearch} className="relative mb-3">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." className="w-full h-11 pl-10 pr-4 rounded-2xl bg-slate-100 dark:bg-white/10 border border-transparent text-sm focus:outline-none focus:bg-white dark:focus:bg-white/10 focus:border-slate-200" />
+            </form>
+            {navLinks.map(link => {
               const Icon = link.icon;
-              const isActive = pathname === link.href;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                    isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
-                  )}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <Icon className="h-4 w-4" />
-                  {link.label}
-                </Link>
-              );
+              const active = pathname === link.href;
+              return <Link key={link.href} href={link.href} onClick={()=>setMobileMenuOpen(false)} className={cn("flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium", active ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "text-slate-600 hover:bg-slate-100 dark:text-slate-400")}><Icon className="h-4 w-4" />{link.label}</Link>
             })}
-            <div className="pt-2 mt-2 border-t border-border space-y-0.5">
-              {[
-                { href: '/university', label: 'University Portal' },
-                { href: '/industry', label: 'Industry Portal' },
-                { href: '/government', label: 'Government Portal' },
-              ].map(item => (
-                <Link key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted" onClick={() => setMobileMenuOpen(false)}>
-                  {item.label}
-                </Link>
-              ))}
-            </div>
+            <div className="pt-3 mt-2 border-t border-slate-200 dark:border-white/10 flex gap-2">{portalLinks.map(l=> <Link key={l.href} href={l.href} onClick={()=>setMobileMenuOpen(false)} className="flex-1 text-center py-2.5 rounded-xl bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 text-xs font-semibold border border-transparent dark:border-white/5">{l.label}</Link>)}</div>
           </div>
         </div>
       )}

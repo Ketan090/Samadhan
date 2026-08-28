@@ -1,77 +1,60 @@
 'use client';
 import React from 'react';
 import Link from 'next/link';
-import { Globe, Twitter, Linkedin, Mail } from 'lucide-react';
+import { Globe, Twitter, Linkedin, Mail, MapPin, ArrowUpRight, Github, Sparkles } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="border-t bg-muted/20">
+    <footer className="border-t border-slate-200/60 dark:border-white/[0.06] bg-white dark:bg-[#070A12]">
       <div className="container py-14">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
-          {/* Brand */}
-          <div className="space-y-4 md:col-span-1">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">S</div>
-              <span className="text-lg font-bold tracking-tight">SamadhanHub</span>
-            </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Connecting communities, universities, and industries to transform societal challenges into scalable solutions.
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          <div className="lg:col-span-5 space-y-5">
+            <Link href="/" className="flex items-center gap-3">
+              <span className="h-10 w-10 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-bold">S</span>
+              <span className="text-xl font-bold tracking-tight">SamadhanHub</span>
+              <span className="rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-[10px] font-bold px-2 py-0.5">BETA</span>
+            </Link>
+            <p className="text-[14px] leading-relaxed text-slate-500 dark:text-slate-400 max-w-md">
+              The modern platform where communities, universities and industry co-create solutions to India&apos;s most pressing challenges. Open, transparent, and built for real-world impact.
             </p>
-            <div className="flex gap-2">
-              {[Globe, Twitter, Linkedin, Mail].map((Icon, i) => (
-                <div key={i} className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer transition-colors">
-                  <Icon className="h-3.5 w-3.5" />
-                </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-900/50 px-3 py-1 text-xs font-medium"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> All systems operational</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-white/10 px-3 py-1 text-xs font-medium"><Sparkles className="h-3 w-3 text-amber-500" /> 425K+ impacted</span>
+            </div>
+            <div className="flex gap-2 pt-2">
+              {[
+                {Icon: Globe, href:'/'}, {Icon: Twitter, href:'#'},{Icon: Linkedin, href:'#'},{Icon: Github, href:'#'},{Icon: Mail, href:'mailto:hello@samadhanhub.in'}
+              ].map(({Icon,href},i)=>(
+                <a key={i} href={href} className="h-9 w-9 rounded-full bg-slate-100 dark:bg-white/10 hover:bg-slate-900 hover:text-white dark:hover:bg-white dark:hover:text-slate-900 flex items-center justify-center text-slate-500 transition-colors">
+                  <Icon className="h-4 w-4" />
+                </a>
               ))}
             </div>
           </div>
 
-          {/* Links */}
-          {[
-            { title: 'Platform', links: [
-              { label: 'Explore Challenges', href: '/challenges' },
-              { label: 'Submit Challenge', href: '/challenges/submit' },
-              { label: 'Collaboration Hub', href: '/collaborate' },
-              { label: 'Impact Dashboard', href: '/impact' },
-            ]},
-            { title: 'Portals', links: [
-              { label: 'University Portal', href: '/university' },
-              { label: 'Industry Portal', href: '/industry' },
-              { label: 'Government Portal', href: '/government' },
-            ]},
-            { title: 'Resources', links: [
-              { label: 'Documentation', href: '#' },
-              { label: 'API Reference', href: '#' },
-              { label: 'Support', href: '#' },
-              { label: 'Privacy Policy', href: '#' },
-            ]},
-          ].map((section) => (
-            <div key={section.title} className="space-y-3">
-              <h4 className="text-sm font-semibold">{section.title}</h4>
-              <ul className="space-y-2">
-                {section.links.map((link) => (
-                  <li key={link.label}>
-                    <Link href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-150">
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-8">
+            {[
+              { title:'Platform', links:[{label:'Explore Challenges',href:'/challenges'},{label:'Submit Challenge',href:'/challenges/submit'},{label:'Collaboration Hub',href:'/collaborate'},{label:'Interactive Map',href:'/challenges/map'},{label:'Impact Dashboard',href:'/impact'}]},
+              { title:'Ecosystem', links:[{label:'University Portal',href:'/university'},{label:'Industry Portal',href:'/industry'},{label:'Government Portal',href:'/government'},{label:'Solutions',href:'/solutions'},{label:'Search',href:'/search'}]},
+              { title:'Resources', links:[{label:'Documentation',href:'#'},{label:'API Reference',href:'#'},{label:'Support',href:'#'},{label:'Privacy',href:'#'},{label:'Terms',href:'#'}]},
+            ].map(col=>(
+              <div key={col.title}>
+                <h4 className="text-xs font-bold tracking-widest uppercase text-slate-900 dark:text-white mb-4">{col.title}</h4>
+                <ul className="space-y-2.5">
+                  {col.links.map(l=>(
+                    <li key={l.label}><Link href={l.href} className="text-sm text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors inline-flex items-center gap-1 group">{l.label}<ArrowUpRight className="h-3 w-3 opacity-0 group-hover:opacity-100 -translate-y-0.5 transition-all" /></Link></li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="mt-10 pt-6 border-t flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-muted-foreground">
-            © 2024 SamadhanHub. Empowering collaborative problem solving.
-          </p>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-500 text-[10px] px-2 py-0.5 font-medium">
-              Demo Data
-            </span>
-            <span className="text-[11px] text-muted-foreground">
-              All data shown is for demonstration purposes only.
-            </span>
+        <div className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200/60 dark:border-white/5 px-5 py-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400">© 2026 SamadhanHub · Built for India, with communities.</p>
+          <div className="flex items-center gap-3 text-xs">
+            <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2.5 py-1 font-medium">Demo data — not affiliated</span>
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-slate-400"><MapPin className="h-3 w-3" /> Ramtek, Nagpur, Maharashtra</span>
           </div>
         </div>
       </div>

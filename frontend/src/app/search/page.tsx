@@ -34,68 +34,67 @@ export default function SearchPage() {
   });
 
   return (
-    <div className="container py-10 max-w-3xl mx-auto">
-      <h1 className="text-3xl font-bold tracking-tight mb-2">Search</h1>
-      <p className="text-muted-foreground mb-8">Find challenges, organizations, and solutions</p>
+    <div className="min-h-screen bg-white dark:bg-[#070A12]">
+      <div className="container py-10 max-w-3xl mx-auto">
+        <h1 className="text-3xl font-bold tracking-tight mb-2 text-gray-900 dark:text-white">Search</h1>
+        <p className="text-gray-500 dark:text-slate-400 mb-8">Find challenges, organizations, and solutions</p>
 
-      {/* Search Input */}
-      <div className="relative mb-8">
-        <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-        <Input
-          className="pl-12 h-13 text-base rounded-xl shadow-card border-0"
-          placeholder="Search anything..."
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          autoFocus
-        />
-      </div>
+        <div className="relative mb-8">
+          <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          <Input
+            className="pl-12 h-12 text-base rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] dark:text-white shadow-sm"
+            placeholder="Search challenges, organizations, solutions..."
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            autoFocus
+          />
+        </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1.5 mb-6 overflow-x-auto pb-1">
-        {tabs.map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 whitespace-nowrap ${
-              activeTab === tab
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+        <div className="flex gap-1.5 mb-6 overflow-x-auto pb-1">
+          {tabs.map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 whitespace-nowrap ${
+                activeTab === tab
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-slate-100 dark:bg-white/10 text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/15'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
 
-      {/* Results */}
-      <div className="space-y-2">
-        {filtered.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground">
-            <SearchIcon className="h-12 w-12 mx-auto mb-4 opacity-20" />
-            <p className="font-medium">No results found</p>
-            <p className="text-sm mt-1">Try a different search term</p>
-          </div>
-        ) : (
-          filtered.map((item, i) => {
-            const Icon = item.icon;
-            return (
-              <Link key={i} href={item.href}>
-                <Card className="hover:shadow-card-hover transition-all duration-200 cursor-pointer border-0 shadow-card group">
-                  <CardContent className="p-4 flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 group-hover:bg-primary/10 transition-colors">
-                      <Icon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-sm truncate group-hover:text-primary transition-colors">{item.title}</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">{item.detail}</p>
-                    </div>
-                    <Badge variant="outline" className="text-[10px] capitalize flex-shrink-0 font-medium">{item.type}</Badge>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })
-        )}
+        <div className="space-y-2">
+          {filtered.length === 0 ? (
+            <div className="text-center py-16 text-gray-500 dark:text-slate-400">
+              <SearchIcon className="h-12 w-12 mx-auto mb-4 opacity-20" />
+              <p className="font-medium">No results found</p>
+              <p className="text-sm mt-1">Try a different search term</p>
+            </div>
+          ) : (
+            filtered.map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <Link key={i} href={item.href}>
+                  <Card className="hover:shadow-md dark:hover:border-white/15 transition-all duration-200 cursor-pointer border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] shadow-sm group">
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-white/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/10 transition-colors">
+                        <Icon className="h-5 w-5 text-gray-500 dark:text-slate-400 group-hover:text-primary transition-colors" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-sm truncate group-hover:text-primary transition-colors text-gray-900 dark:text-white">{item.title}</h3>
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{item.detail}</p>
+                      </div>
+                      <Badge variant="outline" className="text-[10px] capitalize flex-shrink-0 font-medium border-slate-200 dark:border-white/10 dark:text-slate-300">{item.type}</Badge>
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );
