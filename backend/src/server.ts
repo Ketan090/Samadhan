@@ -20,21 +20,22 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-const io = new SocketServer(server, {
-  cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    methods: ['GET', 'POST']
-  }
-});
+const allowedOrigins = [process.env.FRONTEND_URL, 'https://samadhan-for-us.vercel.app', 'http://localhost:3001', 'http://localhost:3000'].filter(Boolean) as string[];
+const corsOptions = {
+  origin: (origin: string | undefined, cb: (err: null, allow: boolean) => void) => {
+    if (!origin || allowedOrigins.some(o => origin === o || (o.includes('*') && new RegExp('^' + o.replace('*','.*') + '$').test(origin)))) cb(null, true);
+    else if (origin.endsWith('.vercel.app')) cb(null, true);
+    else cb(null, true);
+  },
+  credentials: true
+};
+const io = new SocketServer(server, { cors: { origin: allowedOrigins, methods: ['GET', 'POST'] } });
 
 // Connect to MongoDB
 connectDB();
 
 // Middleware
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
-}));
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
