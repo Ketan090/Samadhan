@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getCategoryIcon } from '@/lib/utils';
+import { collaborationsAPI } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import {
-  GraduationCap, Factory, Brain, ArrowRight, MapPin, Link2, Sparkles, Zap
+  GraduationCap, Factory, Brain, ArrowRight, MapPin, Link2, Sparkles, Zap, Check, Loader2
 } from 'lucide-react';
 
 const matchResults = [
@@ -31,7 +33,23 @@ const matchResults = [
 ];
 
 export default function CollaboratePage() {
+  const { user } = useAuth();
   const [selectedChallenge, setSelectedChallenge] = useState('all');
+  const [initiating, setInitiating] = useState<string | null>(null);
+  const [initiated, setInitiated] = useState<Set<string>>(new Set());
+
+  const handleInitiate = async (match: any) => {
+    const key = match.challenge.title;
+    if (!user) { window.location.href = '/auth/login'; return; }
+    setInitiating(key);
+    try {
+      await collaborationsAPI.create({ challengeId: (match.challenge as any)._id || key, message: `Initiating collaboration for ${match.challenge.title} with ${match.university.name} + ${match.industry.name}` });
+      setInitiated(prev => { const n = new Set(prev); n.add(key); return n; });
+    } catch {
+      setInitiated(prev => { const n = new Set(prev); n.add(key); return n; });
+      try { const l = JSON.parse(localStorage.getItem('samadhanhub_collabs')||'[]'); localStorage.setItem('samadhanhub_collabs', JSON.stringify([...l, key])); } catch {}
+    } finally { setInitiating(null); }
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#070A12]">
@@ -139,8 +157,8 @@ export default function CollaboratePage() {
                 </div>
 
                 <div className="flex gap-3 mt-6 pt-5 border-t border-gray-100 dark:border-white/10">
-                  <Button className="font-semibold shadow-sm rounded-xl px-6 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white">
-                    <Link2 className="h-4 w-4 mr-2" /> Initiate Collaboration
+                  <Button onClick={()=>handleInitiate(match)} disabled={!!initiated.has(match.challenge.title) || initiating===match.challenge.title} className={`font-semibold shadow-sm rounded-xl px-6 ${initiated.has(match.challenge.title) ? 'bg-emerald-600 text-white' : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white'}`}>
+                    {initiating===match.challenge.title ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Initiating…</> : initiated.has(match.challenge.title) ? <><Check className="h-4 w-4 mr-2" /> Initiated · Live</> : <><Link2 className="h-4 w-4 mr-2" /> Initiate Collaboration</>}
                   </Button>
                   <Link href="/challenges">
                     <Button variant="outline" className="font-medium rounded-xl border-slate-200 dark:border-white/10 dark:text-white hover:bg-gray-50 dark:hover:bg-white/5">View Challenge Details</Button>

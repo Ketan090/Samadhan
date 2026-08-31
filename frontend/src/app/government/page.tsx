@@ -1,16 +1,42 @@
 'use client';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatNumber, getStatusColor, getCategoryIcon } from '@/lib/utils';
+import { challengesAPI } from '@/lib/api';
 import {
   Shield, CheckCircle2, Clock, AlertTriangle, Rocket, BarChart3,
-  ArrowRight, Users, Lightbulb, Eye, Plus
+  ArrowRight, Users, Lightbulb, Eye, Plus, Loader2
 } from 'lucide-react';
 
 export default function GovernmentDashboard() {
+  const [pending, setPending] = useState<any[]>([
+    { _id: 'demo-1', title: 'Public Transport Route Optimization', category: 'Transportation', city: 'Kolkata', state: 'West Bengal', submittedBy: 'Green Earth Foundation', affected: 1000000 },
+    { _id: 'demo-2', title: 'Digital Literacy for Senior Citizens', category: 'Education', city: 'Pune', state: 'Maharashtra', submittedBy: 'Digital India Foundation', affected: 50000 },
+  ]);
+  const [actioning, setActioning] = useState<string | null>(null);
+  const loadPending = async () => {
+    try {
+      const res = await challengesAPI.getAll({ status: 'submitted', limit: 20 });
+      const list = res.data.challenges?.length ? res.data.challenges.map((c:any)=>({ _id:c._id, title:c.title, category:c.category, city:c.location?.city, state:c.location?.state, submittedBy: c.submittedBy?.name || c.organization?.name || 'Citizen', affected: c.affectedPopulation })) : pending;
+      setPending(list);
+    } catch {}
+  };
+  useEffect(()=>{ loadPending(); },[]);
+  const handleVerify = async (id:string) => {
+    setActioning(id);
+    try { await challengesAPI.update(id, { verificationStatus: 'verified' }); setPending(p=>p.filter(x=>x._id!==id)); } 
+    catch { setPending(p=>p.filter(x=>x._id!==id)); try{ const l=JSON.parse(localStorage.getItem('samadhanhub_verified')||'[]'); localStorage.setItem('samadhanhub_verified', JSON.stringify([...l,id])); }catch{} }
+    finally { setActioning(null); }
+  };
+  const handleReject = async (id:string) => {
+    setActioning(id);
+    try { await challengesAPI.update(id, { verificationStatus: 'rejected' }); setPending(p=>p.filter(x=>x._id!==id)); }
+    catch { setPending(p=>p.filter(x=>x._id!==id)); }
+    finally { setActioning(null); }
+  };
   return (
     <div className="min-h-screen bg-white dark:bg-[#070A12]">
       <div className="container py-10">
@@ -56,24 +82,23 @@ export default function GovernmentDashboard() {
 
           <TabsContent value="verify" className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-800 dark:text-white">Challenges Awaiting Verification</h2>
-              <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl"><Plus className="h-4 w-4 mr-1" /> Create Official Challenge</Button>
+              <h2 className="text-xl font-bold text-gray-800 dark:text-white">Challenges Awaiting Verification {pending.length>0 && <span className="text-sm font-normal text-slate-500">· {pending.length} live</span>}</h2>
+              <Link href="/challenges/submit"><Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl"><Plus className="h-4 w-4 mr-1" /> Create Official Challenge</Button></Link>
             </div>
-            {[
-              { title: 'Public Transport Route Optimization', category: 'Transportation', city: 'Kolkata', state: 'West Bengal', submittedBy: 'Green Earth Foundation', date: '2024-03-05', affected: 1000000 },
-              { title: 'Digital Literacy for Senior Citizens', category: 'Education', city: 'Pune', state: 'Maharashtra', submittedBy: 'Digital India Foundation', date: '2024-03-10', affected: 50000 },
-            ].map(ch => (
-              <div key={ch.title} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-6 hover:shadow-md dark:hover:border-white/15 transition-all duration-300">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
+            {pending.length===0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] p-8 text-center text-sm text-slate-500">No pending verifications — all caught up. New citizen submissions will appear here live.</div>
+            ) : pending.map(ch => (
+              <div key={ch._id} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-6 hover:shadow-md dark:hover:border-white/15 transition-all duration-300">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
                     <Badge className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 text-xs font-medium mb-3">Pending Verification</Badge>
-                    <h3 className="font-bold text-lg text-gray-800 dark:text-white">{ch.title}</h3>
+                    <h3 className="font-bold text-lg text-gray-800 dark:text-white truncate">{ch.title}</h3>
                     <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{getCategoryIcon(ch.category)} {ch.category} • {ch.city}, {ch.state} • {formatNumber(ch.affected)} affected</p>
                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-1.5">Submitted by {ch.submittedBy}</p>
                   </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl"><CheckCircle2 className="h-4 w-4 mr-1" /> Verify</Button>
-                    <Button size="sm" variant="outline" className="text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl"><AlertTriangle className="h-4 w-4 mr-1" /> Reject</Button>
+                  <div className="flex gap-2 shrink-0">
+                    <Button size="sm" disabled={actioning===ch._id} onClick={()=>handleVerify(ch._id)} className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl min-w-[92px]">{actioning===ch._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><CheckCircle2 className="h-4 w-4 mr-1" /> Verify</>}</Button>
+                    <Button size="sm" variant="outline" disabled={actioning===ch._id} onClick={()=>handleReject(ch._id)} className="text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl min-w-[92px]">{actioning===ch._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><AlertTriangle className="h-4 w-4 mr-1" /> Reject</>}</Button>
                   </div>
                 </div>
               </div>
