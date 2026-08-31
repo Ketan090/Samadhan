@@ -6,20 +6,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Globe, Menu, X, Sun, Moon, User, LogOut, ChevronDown, LayoutDashboard, Lightbulb, Map, Search, Bell, Command, Sparkles } from 'lucide-react';
+import { Globe, Menu, X, Sun, Moon, User, LogOut, ChevronDown, LayoutDashboard, Lightbulb, Map, Search, Bell, Command, Sparkles, Clock } from 'lucide-react';
 
 const navLinks = [
-  { href: '/challenges', label: 'Challenges', icon: Lightbulb },
-  { href: '/challenges/map', label: 'Map', icon: Map },
-  { href: '/collaborate', label: 'Collaborate', icon: Globe },
-  { href: '/solutions', label: 'Solutions', icon: LayoutDashboard },
+  { href: '/challenges', label: 'Explore', icon: Lightbulb },
+  { href: '/challenges/submit', label: 'Submit', icon: Map },
+  { href: '/track', label: 'Track', icon: Clock },
 ];
-const portalLinks = [
-  { href: '/university', label: 'University' },
-  { href: '/industry', label: 'Industry' },
-  { href: '/government', label: 'Government' },
-  { href: '/impact', label: 'Impact' },
-];
+const portalLinks: { href: string; label: string }[] = [];
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -96,7 +90,7 @@ export default function Navbar() {
             ) : (
               <div className="flex items-center gap-2">
                 <Link href="/auth/login"><Button variant="ghost" size="sm" className="h-9 rounded-full px-4 text-[13px] font-medium">Sign in</Button></Link>
-                <Link href="/challenges/submit"><Button size="sm" className="h-9 rounded-full px-5 text-[13px] font-semibold bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 shadow-sm">Submit Challenge</Button></Link>
+                <Link href="/challenges/submit"><Button size="sm" className="h-9 rounded-full px-5 text-[13px] font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-sm">Submit a Complaint</Button></Link>
               </div>
             )}
             <Button variant="ghost" size="icon" aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'} aria-expanded={mobileMenuOpen} aria-controls="mobile-nav" className="lg:hidden h-10 w-10 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 shrink-0" onClick={()=>setMobileMenuOpen(!mobileMenuOpen)}>{mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}</Button>
