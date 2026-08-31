@@ -88,17 +88,17 @@ export default function GovernmentDashboard() {
             {pending.length===0 ? (
               <div className="rounded-2xl border border-dashed border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] p-8 text-center text-sm text-slate-500">No pending verifications — all caught up. New citizen submissions will appear here live.</div>
             ) : pending.map(ch => (
-              <div key={ch._id} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-6 hover:shadow-md dark:hover:border-white/15 transition-all duration-300">
+              <div key={ch._id} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-4 sm:p-6 hover:shadow-md dark:hover:border-white/15 transition-all duration-300 overflow-hidden">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <Badge className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 text-xs font-medium mb-3">Pending Verification</Badge>
-                    <h3 className="font-bold text-lg text-gray-800 dark:text-white truncate">{ch.title}</h3>
-                    <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{getCategoryIcon(ch.category)} {ch.category} • {ch.city}, {ch.state} • {formatNumber(ch.affected)} affected</p>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1.5">Submitted by {ch.submittedBy}</p>
+                    <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight break-words">{ch.title || 'Untitled Challenge'}</h3>
+                    <p className="text-sm text-gray-500 dark:text-slate-400 mt-1 flex flex-wrap items-center gap-1">{ch.category ? <>{getCategoryIcon(ch.category)} {ch.category} •</> : null} {ch.city || 'Unknown'}, {ch.state || 'India'} • {formatNumber(ch.affected || 0)} affected</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1.5 truncate">Submitted by {ch.submittedBy || 'Citizen'}</p>
                   </div>
-                  <div className="flex gap-2 shrink-0">
-                    <Button size="sm" disabled={actioning===ch._id} onClick={()=>handleVerify(ch._id)} className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl min-w-[92px]">{actioning===ch._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><CheckCircle2 className="h-4 w-4 mr-1" /> Verify</>}</Button>
-                    <Button size="sm" variant="outline" disabled={actioning===ch._id} onClick={()=>handleReject(ch._id)} className="text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl min-w-[92px]">{actioning===ch._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><AlertTriangle className="h-4 w-4 mr-1" /> Reject</>}</Button>
+                  <div className="flex gap-2 shrink-0 w-full sm:w-auto">
+                    <Button size="sm" disabled={actioning===ch._id} onClick={()=>handleVerify(ch._id)} className="flex-1 sm:flex-none bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl min-w-0 sm:min-w-[92px] justify-center">{actioning===ch._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><CheckCircle2 className="h-4 w-4 mr-1" /> Verify</>}</Button>
+                    <Button size="sm" variant="outline" disabled={actioning===ch._id} onClick={()=>handleReject(ch._id)} className="flex-1 sm:flex-none text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl min-w-0 sm:min-w-[92px] justify-center">{actioning===ch._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><AlertTriangle className="h-4 w-4 mr-1" /> Reject</>}</Button>
                   </div>
                 </div>
               </div>

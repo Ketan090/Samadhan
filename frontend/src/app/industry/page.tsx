@@ -92,21 +92,23 @@ export default function IndustryPortal() {
           <TabsContent value="challenges" className="space-y-4">
             <div className="flex items-center justify-between"><h2 className="text-xl font-bold text-gray-800 dark:text-white">Challenges Matching Your Capabilities</h2>{indLoading && <Loader2 className="h-4 w-4 animate-spin" />}</div>
             {liveChallenges.map(ch => (
-              <div key={ch.title} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-6 hover:shadow-md dark:hover:border-white/15 transition-all duration-300">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Badge className={`${getStatusColor(ch.status)} capitalize text-xs font-medium`}>{ch.status}</Badge>
-                      <Badge variant="outline" className="text-xs border-slate-200 dark:border-white/10 dark:text-slate-300">{getCategoryIcon(ch.category)} {ch.category}</Badge>
+              <div key={ch.title} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-4 sm:p-6 hover:shadow-md dark:hover:border-white/15 transition-all duration-300 overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
+                      <Badge className={`${getStatusColor(ch.status)} capitalize text-xs font-medium`}>{ch.status || 'open'}</Badge>
+                      <Badge variant="outline" className="text-xs border-slate-200 dark:border-white/10 dark:text-slate-300">{getCategoryIcon(ch.category)} {ch.category || 'General'}</Badge>
                     </div>
-                    <h3 className="font-bold text-lg text-gray-800 dark:text-white">{ch.title}</h3>
-                    <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{ch.location}</p>
-                    <Badge variant="secondary" className="mt-2.5 text-xs bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-slate-300">{ch.relevance}</Badge>
+                    <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight break-words">{ch.title || 'Untitled Challenge'}</h3>
+                    <p className="text-sm text-gray-500 dark:text-slate-400 mt-1 truncate">{ch.location || 'Unknown'}</p>
+                    <Badge variant="secondary" className="mt-2.5 text-xs bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-slate-300">{ch.relevance || 'General'}</Badge>
                   </div>
-                  <div className="text-right">
-                    <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{ch.matchScore}%</div>
-                    <div className="text-xs text-gray-500 dark:text-slate-400">Match</div>
-                    <Button size="sm" className="mt-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl border-transparent dark:border-blue-500/20">Mentor</Button>
+                  <div className="text-center sm:text-right shrink-0 w-full sm:w-auto flex sm:block items-center justify-between gap-3 mt-2 sm:mt-0">
+                    <div>
+                      <div className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">{ch.matchScore || 85}%</div>
+                      <div className="text-xs text-gray-500 dark:text-slate-400">Match</div>
+                    </div>
+                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shrink-0">Mentor</Button>
                   </div>
                 </div>
               </div>

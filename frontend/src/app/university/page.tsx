@@ -89,23 +89,25 @@ export default function UniversityPortal() {
               <Badge className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20">Live · Auto-updated</Badge>
             </div>
             {challenges.map(ch => (
-              <div key={ch._id} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-6 hover:shadow-md dark:hover:border-white/15 transition-all duration-300">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Badge className={`${getStatusColor(ch.status)} capitalize text-xs`}>{ch.status}</Badge>
-                      <Badge variant="outline" className="text-xs border-slate-200 dark:border-white/10 dark:text-slate-300">{getCategoryIcon(ch.category)} {ch.category}</Badge>
+              <div key={ch._id} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-4 sm:p-6 hover:shadow-md dark:hover:border-white/15 transition-all duration-300 overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
+                      <Badge className={`${getStatusColor(ch.status)} capitalize text-xs`}>{ch.status || 'open'}</Badge>
+                      <Badge variant="outline" className="text-xs border-slate-200 dark:border-white/10 dark:text-slate-300">{getCategoryIcon(ch.category)} {ch.category || 'General'}</Badge>
                     </div>
-                    <h3 className="font-bold text-lg text-gray-800 dark:text-white">{ch.title}</h3>
-                    <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-slate-400 mt-1.5">
-                      <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {ch.location}</span>
-                      <span>{formatNumber(ch.affectedPopulation)} affected</span>
+                    <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight break-words">{ch.title || 'Untitled Challenge'}</h3>
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-slate-400 mt-1.5">
+                      <span className="flex items-center gap-1 min-w-0 truncate"><MapPin className="h-3 w-3 shrink-0" /> {ch.location || 'Unknown'}</span>
+                      <span>{formatNumber(ch.affectedPopulation || 0)} affected</span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-3xl font-bold text-emerald-500">{ch.matchScore}%</div>
-                    <div className="text-xs text-gray-500 dark:text-slate-400">Match</div>
-                    <Link href={`/challenges/${ch._id}`}><Button size="sm" className="mt-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl">View <ArrowRight className="h-3 w-3 ml-1" /></Button></Link>
+                  <div className="text-center sm:text-right shrink-0 w-full sm:w-auto flex sm:block items-center justify-between gap-3 mt-2 sm:mt-0">
+                    <div>
+                      <div className="text-2xl sm:text-3xl font-bold text-emerald-500">{ch.matchScore || 85}%</div>
+                      <div className="text-xs text-gray-500 dark:text-slate-400">Match</div>
+                    </div>
+                    <Link href={`/challenges/${ch._id}`} className="shrink-0"><Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl">View <ArrowRight className="h-3 w-3 ml-1" /></Button></Link>
                   </div>
                 </div>
               </div>
