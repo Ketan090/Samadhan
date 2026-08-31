@@ -1,6 +1,7 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -23,13 +24,19 @@ const demoChallenges = [
   { _id: '6', title: 'Digital Education Access for Underprivileged Students', description: 'Millions lack access to quality digital education resources.', category: 'Education', location: { city: 'Patna', state: 'Bihar' }, severity: 'high', affectedPopulation: 500000, status: 'open', suggestedExpertise: ['EdTech','Mobile Development','AI/ML'], numberOfTeams: 5, numberOfSolutions: 4 },
 ];
 
-export default function ChallengesPage() {
+function ChallengesInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [challenges, setChallenges] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({ search: '', category: '', state: '', severity: '', status: '' });
+  const [filters, setFilters] = useState({ search: '', category: searchParams.get('category') || '', state: '', severity: '', status: '' });
 
+  useEffect(() => {
+    const cat = searchParams.get('category');
+    if (cat && cat !== filters.category) setFilters(f => ({ ...f, category: cat }));
+  }, [searchParams]);
   useEffect(() => { loadChallenges(); }, [filters, pagination.page]);
   const loadChallenges = async () => {
     setLoading(true);
@@ -154,4 +161,7 @@ export default function ChallengesPage() {
       </div>
     </div>
   );
+}
+export default function ChallengesPage() {
+  return <Suspense fallback={<div className="container py-10"><div className="h-32 rounded-2xl bg-slate-100 dark:bg-white/5 animate-pulse" /></div>}><ChallengesInner /></Suspense>
 }

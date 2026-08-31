@@ -23,9 +23,9 @@ export default function Footer() {
             </div>
             <div className="flex gap-2 pt-2">
               {[
-                {Icon: Globe, href:'/'}, {Icon: Twitter, href:'#'},{Icon: Linkedin, href:'#'},{Icon: Github, href:'#'},{Icon: Mail, href:'mailto:hello@samadhanhub.in'}
-              ].map(({Icon,href},i)=>(
-                <a key={i} href={href} className="h-9 w-9 rounded-full bg-slate-100 dark:bg-white/10 hover:bg-slate-900 hover:text-white dark:hover:bg-white dark:hover:text-slate-900 flex items-center justify-center text-slate-500 transition-colors">
+                {Icon: Globe, href:'/', label:'Website'}, {Icon: Twitter, href:'https://x.com', label:'Twitter'},{Icon: Linkedin, href:'https://linkedin.com', label:'LinkedIn'},{Icon: Github, href:'https://github.com/Ketan090/Samadhan', label:'GitHub'},{Icon: Mail, href:'mailto:hello@samadhanhub.in', label:'Email'}
+              ].map(({Icon,href,label},i)=>(
+                <a key={i} href={href} aria-label={label} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noopener noreferrer' : undefined} className="h-9 w-9 rounded-full bg-slate-100 dark:bg-white/10 hover:bg-slate-900 hover:text-white dark:hover:bg-white dark:hover:text-slate-900 flex items-center justify-center text-slate-500 dark:text-slate-400 transition-colors">
                   <Icon className="h-4 w-4" />
                 </a>
               ))}
@@ -36,7 +36,7 @@ export default function Footer() {
             {[
               { title:'Platform', links:[{label:'Explore Challenges',href:'/challenges'},{label:'Submit Challenge',href:'/challenges/submit'},{label:'Collaboration Hub',href:'/collaborate'},{label:'Interactive Map',href:'/challenges/map'},{label:'Impact Dashboard',href:'/impact'}]},
               { title:'Ecosystem', links:[{label:'University Portal',href:'/university'},{label:'Industry Portal',href:'/industry'},{label:'Government Portal',href:'/government'},{label:'Solutions',href:'/solutions'},{label:'Search',href:'/search'}]},
-              { title:'Resources', links:[{label:'Documentation',href:'#'},{label:'API Reference',href:'#'},{label:'Support',href:'#'},{label:'Privacy',href:'#'},{label:'Terms',href:'#'}]},
+              { title:'Resources', links:[{label:'About',href:'/about'},{label:'All Challenges',href:'/challenges'},{label:'Support',href:'mailto:hello@samadhanhub.in'},{label:'Privacy',href:'/about'},{label:'Terms',href:'/about'}]},
             ].map(col=>(
               <div key={col.title}>
                 <h4 className="text-xs font-bold tracking-widest uppercase text-slate-900 dark:text-white mb-4">{col.title}</h4>

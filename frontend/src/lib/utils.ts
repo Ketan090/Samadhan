@@ -6,8 +6,8 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatNumber(num: number): string {
-  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
   return num.toString();
 }
 
@@ -49,7 +49,7 @@ export function getSeverityColor(severity: string): string {
   return colors[severity] || 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-transparent dark:border-white/10';
 }
 
-export function getCategoryIcon(category: string): string {
+export function getCategoryIcon(category: string, withLabel = false): string {
   const icons: Record<string, string> = {
     'Environment': '🌿',
     'Healthcare': '🏥',
