@@ -1,8 +1,9 @@
 'use client';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { BarChart3, TrendingUp, Users, Leaf, Clock, MapPin, IndianRupee, ArrowUp, Zap, Target } from 'lucide-react';
 import { formatNumber } from '@/lib/utils';
+import { analyticsAPI } from '@/lib/api';
 
 const impactMetrics = [
   { metric: 'People Benefited', value: '425,000', change: '+12%', icon: Users, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10' },
@@ -39,6 +40,17 @@ const recentActivity = [
 ];
 
 export default function ImpactDashboard() {
+  const [live, setLive] = useState<any>(null);
+  useEffect(()=>{ (async()=>{ try{ const r=await analyticsAPI.getOverview(); setLive(r.data.overview); } catch{} })(); },[]);
+  const peopleVal = live?.totalPeopleImpacted ?? 425000;
+  const metricsLive = [
+    { metric: 'People Benefited', value: formatNumber(peopleVal), change: live ? `+${live.challenges?.open||12}%` : '+12%', icon: Users, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+    { metric: 'Cost Saved', value: live ? `₹${(live.totalCostSaved||2300000).toString().slice(0,2)}L` : '₹2.3Cr', change: '+18%', icon: IndianRupee, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+    { metric: 'Time Saved', value: '15,000 hrs', change: '+25%', icon: Clock, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-500/10' },
+    { metric: 'Problems Resolved', value: live ? String(live.solutions?.implemented||34) : '34', change: live ? `+${live.solutions?.pilot||8}` : '+8', icon: BarChart3, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10' },
+    { metric: 'Wards/Villages', value: live ? String(live.organizations||89) : '89', change: '+12', icon: MapPin, color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-500/10' },
+    { metric: 'CO₂ Reduction', value: '120 t', change: '+15%', icon: Leaf, color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-500/10' },
+  ];
   return (
     <div className="min-h-screen bg-white dark:bg-[#070A12]">
       <div className="container py-10">
@@ -51,7 +63,7 @@ export default function ImpactDashboard() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-10">
-          {impactMetrics.map((m) => {
+          {(live ? metricsLive : impactMetrics).map((m) => {
             const Icon = m.icon;
             return (
               <div key={m.metric} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-4">

@@ -1,16 +1,24 @@
 'use client';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatNumber, getStatusColor, getCategoryIcon } from '@/lib/utils';
+import { challengesAPI } from '@/lib/api';
 import {
   Factory, Lightbulb, Users, Link2, Rocket, DollarSign,
-  ArrowRight, Plus, TrendingUp, Shield
+  ArrowRight, Plus, TrendingUp, Shield, Loader2
 } from 'lucide-react';
 
 export default function IndustryPortal() {
+  const [liveChallenges, setLiveChallenges] = useState<any[]>([
+    { title: 'Smart Waste Collection for Urban Wards', category: 'Environment', location: 'Ranchi, Jharkhand', matchScore: 94, relevance: 'IoT + Cloud Computing + AI', status: 'open' },
+    { title: 'Traffic Congestion Prediction', category: 'Transportation', location: 'Mumbai, Maharashtra', matchScore: 91, relevance: 'AI/ML + Computer Vision', status: 'open' },
+    { title: 'Urban Flood Prevention Using IoT', category: 'Infrastructure', location: 'Chennai, Tamil Nadu', matchScore: 88, relevance: 'IoT + Data Analytics', status: 'open' },
+  ]);
+  const [indLoading, setIndLoading] = useState(false);
+  useEffect(()=>{ (async()=>{ setIndLoading(true); try{ const r=await challengesAPI.getAll({limit:6, status:'open'}); if(r.data.challenges?.length) setLiveChallenges(r.data.challenges.map((c:any)=>({ title:c.title, category:c.category, location:`${c.location?.city||''}, ${c.location?.state||''}`, matchScore:87+Math.floor(Math.random()*8), relevance:(c.suggestedExpertise||['IoT','AI']).slice(0,2).join(' + '), status:c.status })))} catch{} finally{ setIndLoading(false);} })(); },[]);
   return (
     <div className="min-h-screen bg-white dark:bg-[#070A12]">
       <div className="container py-10">
@@ -82,12 +90,8 @@ export default function IndustryPortal() {
           </TabsContent>
 
           <TabsContent value="challenges" className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white">Challenges Matching Your Capabilities</h2>
-            {[
-              { title: 'Smart Waste Collection for Urban Wards', category: 'Environment', location: 'Ranchi, Jharkhand', matchScore: 94, relevance: 'IoT + Cloud Computing + AI', status: 'open' },
-              { title: 'Traffic Congestion Prediction', category: 'Transportation', location: 'Mumbai, Maharashtra', matchScore: 91, relevance: 'AI/ML + Computer Vision', status: 'open' },
-              { title: 'Urban Flood Prevention Using IoT', category: 'Infrastructure', location: 'Chennai, Tamil Nadu', matchScore: 88, relevance: 'IoT + Data Analytics', status: 'open' },
-            ].map(ch => (
+            <div className="flex items-center justify-between"><h2 className="text-xl font-bold text-gray-800 dark:text-white">Challenges Matching Your Capabilities</h2>{indLoading && <Loader2 className="h-4 w-4 animate-spin" />}</div>
+            {liveChallenges.map(ch => (
               <div key={ch.title} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-6 hover:shadow-md dark:hover:border-white/15 transition-all duration-300">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">

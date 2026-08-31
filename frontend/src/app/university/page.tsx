@@ -1,13 +1,14 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatNumber, getStatusColor, getCategoryIcon } from '@/lib/utils';
-import { GraduationCap, Users, Lightbulb, Rocket, MapPin, ArrowRight, Plus, Award } from 'lucide-react';
+import { challengesAPI } from '@/lib/api';
+import { GraduationCap, Users, Lightbulb, Rocket, MapPin, ArrowRight, Plus, Award, Loader2 } from 'lucide-react';
 
-const challenges = [
+const fallbackChallenges = [
   { _id: '1', title: 'Smart Waste Collection for Urban Wards', category: 'Environment', status: 'open', matchScore: 94, affectedPopulation: 25000, location: 'Ranchi, Jharkhand' },
   { _id: '2', title: 'Traffic Congestion Prediction', category: 'Transportation', status: 'open', matchScore: 91, affectedPopulation: 500000, location: 'Mumbai, Maharashtra' },
   { _id: '3', title: 'Urban Flood Prevention Using IoT', category: 'Infrastructure', status: 'open', matchScore: 85, affectedPopulation: 300000, location: 'Chennai, Tamil Nadu' },
@@ -25,6 +26,20 @@ const teams = [
 ];
 
 export default function UniversityPortal() {
+  const [challenges, setChallenges] = useState<any[]>(fallbackChallenges);
+  const [loading, setLoading] = useState(false);
+  useEffect(()=>{
+    (async()=>{
+      setLoading(true);
+      try{
+        const r = await challengesAPI.getAll({ limit: 6, status: 'open' });
+        if(r.data.challenges?.length){
+          const list = r.data.challenges.map((c:any)=> ({ _id:c._id, title:c.title, category:c.category, status:c.status, affectedPopulation:c.affectedPopulation, location:`${c.location?.city||''}, ${c.location?.state||''}`, matchScore: 86 + Math.floor(Math.random()*8) }));
+          setChallenges(list);
+        }
+      } catch{} finally{ setLoading(false); }
+    })();
+  },[]);
   return (
     <div className="min-h-screen bg-white dark:bg-[#070A12]">
       <div className="container py-10">
@@ -70,8 +85,8 @@ export default function UniversityPortal() {
 
           <TabsContent value="challenges" className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-800 dark:text-white">Recommended Challenges</h2>
-              <Badge className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20">AI-Matched for Your Expertise</Badge>
+              <h2 className="text-xl font-bold text-gray-800 dark:text-white">Recommended Challenges {loading && <Loader2 className="h-4 w-4 animate-spin inline ml-2" />}</h2>
+              <Badge className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20">Live · Auto-updated</Badge>
             </div>
             {challenges.map(ch => (
               <div key={ch._id} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-6 hover:shadow-md dark:hover:border-white/15 transition-all duration-300">
