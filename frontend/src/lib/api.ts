@@ -89,4 +89,16 @@ export const aiAPI = {
   matchCollaborators: (data: any) => api.post('/ai/match-collaborators', data)
 };
 
+// AI Matching Engine API (live)
+export const aiMatchingAPI = {
+  analyze: (data: any) => api.post('/ai-matching/analyze', data),
+  match: (data: any) => api.post('/ai-matching/match', data),
+  analyzeImage: (data: any) => api.post('/ai-matching/analyze-image', data),
+  overview: () => api.get('/ai-matching/overview'),
+  getConfig: () => api.get('/ai-matching/config'),
+  updateConfig: (data: any) => api.put('/ai-matching/config', data),
+  invite: (data: any) => api.post('/ai-matching/invite', data),
+  feedback: (data: any) => api.post('/ai-matching/feedback', data),
+};
+
 export default api;

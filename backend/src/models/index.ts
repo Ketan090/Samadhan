@@ -10,3 +10,6 @@ export { default as ExpertEvaluation } from './ExpertEvaluation';
 export { default as Notification } from './Notification';
 export { default as ImpactMetric } from './ImpactMetric';
 export { default as AuditLog } from './AuditLog';
+export { default as ChallengeAnalysis } from './ChallengeAnalysis';
+export { default as Match } from './Match';
+export { default as MatchingConfig } from './MatchingConfig';

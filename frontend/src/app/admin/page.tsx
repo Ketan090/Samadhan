@@ -1,15 +1,33 @@
 'use client';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { aiMatchingAPI } from '@/lib/api';
 import {
   Shield, Users, Building2, Lightbulb, FileText, Settings,
-  Activity, AlertTriangle, CheckCircle2, Clock, TrendingUp
+  Activity, AlertTriangle, CheckCircle2, Clock, TrendingUp, Brain, Key, Server, Save
 } from 'lucide-react';
 
 export default function AdminDashboard() {
+  const [aiConfig, setAiConfig] = useState<any>(null);
+  const [aiForm, setAiForm] = useState({ provider: 'mock', apiBase: '', openaiKey: '', geminiKey: '', minimumMatchScore: 60 });
+  const [aiSaving, setAiSaving] = useState(false);
+  const [aiMsg, setAiMsg] = useState('');
+  useEffect(()=>{ (async()=>{ try{ const r=await aiMatchingAPI.getConfig(); setAiConfig(r.data.config); setAiForm({ provider: r.data.config.provider, apiBase: r.data.config.apiBase||'', openaiKey: '', geminiKey: '', minimumMatchScore: r.data.config.minimumMatchScore }); }catch{} })(); },[]);
+  const saveAI = async()=>{
+    setAiSaving(true); setAiMsg('');
+    try{
+      const payload:any={ provider: aiForm.provider, apiBase: aiForm.apiBase, minimumMatchScore: Number(aiForm.minimumMatchScore) };
+      const keys:any={}; if(aiForm.openaiKey) keys.openai=aiForm.openaiKey; if(aiForm.geminiKey) keys.gemini=aiForm.geminiKey; if(Object.keys(keys).length) payload.apiKeys=keys;
+      await aiMatchingAPI.updateConfig(payload);
+      setAiMsg('Saved — provider now ' + aiForm.provider + (aiForm.apiBase ? ` via ${aiForm.apiBase}` : ''));
+    } catch(e:any){ setAiMsg(e.response?.data?.message || 'Save failed — admin only'); }
+    finally{ setAiSaving(false); }
+  };
   return (
     <div className="min-h-screen bg-white dark:bg-[#070A12]">
       <div className="container py-8">
@@ -43,10 +61,11 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="organizations">Organizations</TabsTrigger>
             <TabsTrigger value="challenges">Challenges</TabsTrigger>
+            <TabsTrigger value="ai">AI Config</TabsTrigger>
             <TabsTrigger value="audit">Audit Log</TabsTrigger>
           </TabsList>
 
@@ -130,6 +149,32 @@ export default function AdminDashboard() {
                       <div className="text-xs">{s.label}</div>
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="ai" className="space-y-4">
+            <Card className="border border-violet-200 dark:border-violet-900/30 bg-white dark:bg-[#0F1420]">
+              <CardHeader><CardTitle className="text-sm text-gray-900 dark:text-white flex items-center gap-2"><Brain className="h-4 w-4 text-violet-600" /> AI Matching & Vision — Provider & Keys</CardTitle><p className="text-xs text-slate-500 mt-1">Paste any provider key once — entire site forwards there. For LM Studio, paste ngrok URL in API Base and set provider to LM Studio.</p></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div><label className="text-xs font-semibold">Provider</label><Select value={aiForm.provider} onValueChange={v=>setAiForm({...aiForm, provider:v})}><SelectTrigger className="mt-1.5 h-11 rounded-xl"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="mock">Mock (demo, free unlimited)</SelectItem><SelectItem value="openai">OpenAI</SelectItem><SelectItem value="gemini">Gemini</SelectItem><SelectItem value="lmstudio">LM Studio (local/ngrok)</SelectItem><SelectItem value="local">Local Ollama</SelectItem></SelectContent></Select></div>
+                  <div className="md:col-span-2"><label className="text-xs font-semibold flex items-center gap-1"><Server className="h-3 w-3" /> API Base / LM Studio URL (for ngrok or localhost:1234)</label><Input value={aiForm.apiBase} onChange={e=>setAiForm({...aiForm, apiBase:e.target.value})} placeholder="https://xxxx.ngrok.io or http://localhost:1234/v1 or https://api.openai.com/v1" className="mt-1.5 h-11 rounded-xl" /></div>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div><label className="text-xs font-semibold flex items-center gap-1"><Key className="h-3 w-3" /> OpenAI API Key</label><Input type="password" value={aiForm.openaiKey} onChange={e=>setAiForm({...aiForm, openaiKey:e.target.value})} placeholder={aiConfig?.apiKeys?.openai ? aiConfig.apiKeys.openai : "sk-... (paste to enable OpenAI)"} className="mt-1.5 h-11 rounded-xl" /></div>
+                  <div><label className="text-xs font-semibold flex items-center gap-1"><Key className="h-3 w-3" /> Gemini API Key</label><Input type="password" value={aiForm.geminiKey} onChange={e=>setAiForm({...aiForm, geminiKey:e.target.value})} placeholder={aiConfig?.apiKeys?.gemini ? aiConfig.apiKeys.gemini : "AI... (paste to enable Gemini)"} className="mt-1.5 h-11 rounded-xl" /></div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1"><label className="text-xs font-semibold">Minimum Match Score</label><Input type="number" value={aiForm.minimumMatchScore} onChange={e=>setAiForm({...aiForm, minimumMatchScore: parseInt(e.target.value)||0})} className="mt-1.5 h-11 rounded-xl w-32" /></div>
+                  <Button onClick={saveAI} disabled={aiSaving} className="mt-6 rounded-xl bg-slate-900 dark:bg-white dark:text-slate-900 gap-2">{aiSaving ? 'Saving...' : <><Save className="h-4 w-4" /> Save AI Config</>}</Button>
+                </div>
+                {aiMsg && <div className="text-xs p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-300">{aiMsg}</div>}
+                <div className="rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 p-3 text-xs text-slate-500 space-y-1">
+                  <div><span className="font-semibold">Mock:</span> Free unlimited, no key, heuristic + embeddings — works offline (current).</div>
+                  <div><span className="font-semibold">OpenAI/Gemini:</span> Paste key above, set provider, Save — entire site vision + matching forwards there (backend proxy, so Vercel → Render → your key). No key exposed to client.</div>
+                  <div><span className="font-semibold">LM Studio (Option B):</span> Start LM Studio → `ngrok http 1234` → paste `https://xxxx.ngrok.io/v1` in API Base → provider LM Studio → Save — entire site forwards to your laptop. Or paste `http://localhost:1234/v1` for same-device only.</div>
                 </div>
               </CardContent>
             </Card>

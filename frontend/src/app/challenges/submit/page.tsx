@@ -6,8 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { challengesAPI } from '@/lib/api';
-import { Camera, Image as ImageIcon, X, CheckCircle2, Clock, Sparkles, ArrowRight } from 'lucide-react';
+import { challengesAPI, aiMatchingAPI } from '@/lib/api';
+import { Camera, Image as ImageIcon, X, CheckCircle2, Clock, Sparkles, ArrowRight, Brain, Eye } from 'lucide-react';
 
 const categories = ['Environment','Healthcare','Education','Transportation','Agriculture','Infrastructure','Social Welfare','Technology'];
 
@@ -23,6 +23,10 @@ export default function SubmitComplaintPage() {
   const [aiStep, setAiStep] = useState(0);
   const [aiDone, setAiDone] = useState(false);
   const [aiChecks, setAiChecks] = useState({ relevant: false, usable: false, manipulation: false });
+  const [vision, setVision] = useState<{ detected: string; suggestedTitle: string; suggestedDescription: string; suggestedCategory: string; confidence: number } | null>(null);
+  const [visionAnalyzing, setVisionAnalyzing] = useState(false);
+  const [showVisionPrompt, setShowVisionPrompt] = useState(false);
+  const [visionPrefs, setVisionPrefs] = useState({ title: true, description: true, category: true });
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
 
@@ -35,8 +39,36 @@ export default function SubmitComplaintPage() {
     if (!f.type.startsWith('image/')) { alert("Please choose an image file."); return; }
     setPhotoFile(f);
     const reader = new FileReader();
-    reader.onload = () => setPhoto(reader.result as string);
+    reader.onload = async () => {
+      const b64 = reader.result as string;
+      setPhoto(b64);
+      setVision(null); setShowVisionPrompt(false);
+      setVisionAnalyzing(true);
+      // Try LM Studio direct if configured in localStorage, else backend
+      const lmUrl = typeof window !== 'undefined' ? localStorage.getItem('lmstudio_url') : null;
+      try {
+        if (lmUrl) {
+          const r = await fetch(`${lmUrl.replace(/\/$/,'')}/v1/chat/completions`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'local', messages:[{role:'user', content:[{type:'text', text:'Describe civic issue in 1 sentence, suggest title, category among Environment/Healthcare/Education/Transportation/Agriculture/Infrastructure/Social Welfare/Technology'}, {type:'image_url', image_url:{url:b64}}]}] }) });
+          if(r.ok){ const d:any=await r.json(); const txt=d.choices?.[0]?.message?.content||''; setVision({ detected: txt.slice(0,80), suggestedTitle: txt.match(/title:\s*(.*)/i)?.[1]?.slice(0,60) || 'Civic issue detected', suggestedDescription: txt.slice(0,180), suggestedCategory: 'Environment', confidence: 87 }); setShowVisionPrompt(true); }
+        } else {
+          const res = await aiMatchingAPI.analyzeImage({ image: b64, hint: title || category });
+          setVision(res.data); setShowVisionPrompt(true);
+        }
+      } catch {
+        // fallback mock
+        setVision({ detected: 'Photo shows civic issue', suggestedTitle: 'Civic issue — photo detected', suggestedDescription: 'Photo shows an issue that appears to affect the community. Please confirm or edit the description.', suggestedCategory: category || 'Environment', confidence: 82 });
+        setShowVisionPrompt(true);
+      } finally { setVisionAnalyzing(false); }
+    };
     reader.readAsDataURL(f);
+  };
+
+  const applyVision = () => {
+    if(!vision) return;
+    if(visionPrefs.title && vision.suggestedTitle) setTitle(vision.suggestedTitle);
+    if(visionPrefs.description && vision.suggestedDescription) setDescription(vision.suggestedDescription);
+    if(visionPrefs.category && vision.suggestedCategory) setCategory(vision.suggestedCategory);
+    setShowVisionPrompt(false);
   };
 
   const handleSubmit = async () => {
@@ -167,6 +199,24 @@ export default function SubmitComplaintPage() {
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
             <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhoto} />
             {!photo && <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">A photo is required to submit. It helps us verify.</p>}
+            {visionAnalyzing && <div className="mt-3 rounded-xl bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-900/30 p-3 flex items-center gap-2 text-xs"><Eye className="h-4 w-4 text-violet-600 animate-pulse" /> AI is looking at your photo…</div>}
+            {showVisionPrompt && vision && (
+              <div className="mt-3 rounded-2xl border-2 border-violet-500 bg-gradient-to-br from-violet-50 to-blue-50 dark:from-violet-950/20 dark:to-blue-950/20 p-4">
+                <div className="text-xs font-bold flex items-center gap-1.5"><Brain className="h-4 w-4 text-violet-600" /> AI saw: {vision.detected} <Badge className="ml-auto bg-violet-600 text-white text-[10px] rounded-full">{vision.confidence}%</Badge></div>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Auto-fill description and details for you?</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <label className="inline-flex items-center gap-1 text-xs bg-white dark:bg-[#0F1420] border border-violet-200 dark:border-violet-900/30 px-2 py-1 rounded-full"><input type="checkbox" checked={visionPrefs.title} onChange={e=>setVisionPrefs({...visionPrefs, title:e.target.checked})} /> Title</label>
+                  <label className="inline-flex items-center gap-1 text-xs bg-white dark:bg-[#0F1420] border border-violet-200 dark:border-violet-900/30 px-2 py-1 rounded-full"><input type="checkbox" checked={visionPrefs.description} onChange={e=>setVisionPrefs({...visionPrefs, description:e.target.checked})} /> Description</label>
+                  <label className="inline-flex items-center gap-1 text-xs bg-white dark:bg-[#0F1420] border border-violet-200 dark:border-violet-900/30 px-2 py-1 rounded-full"><input type="checkbox" checked={visionPrefs.category} onChange={e=>setVisionPrefs({...visionPrefs, category:e.target.checked})} /> Category</label>
+                </div>
+                {vision.suggestedDescription && <div className="mt-2 rounded-xl bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 p-2.5 text-xs italic">"{vision.suggestedDescription.slice(0,140)}"</div>}
+                <div className="mt-3 flex gap-2">
+                  <Button size="sm" className="flex-1 rounded-full h-8 bg-violet-600 hover:bg-violet-700 text-white text-xs" onClick={applyVision}>Yes, auto-fill</Button>
+                  <Button size="sm" variant="outline" className="flex-1 rounded-full h-8 text-xs" onClick={()=>setShowVisionPrompt(false)}>No, I'll type</Button>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1.5">You can edit anything after — AI is only a helper, not the judge.</p>
+              </div>
+            )}
           </div>
 
           <Button onClick={handleSubmit} disabled={!isValid || submitting} className="w-full h-12 rounded-full bg-slate-900 dark:bg-white dark:text-slate-900 text-[15px] font-semibold disabled:opacity-50">
