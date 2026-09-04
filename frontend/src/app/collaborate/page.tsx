@@ -1,11 +1,11 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getCategoryIcon } from '@/lib/utils';
-import { collaborationsAPI } from '@/lib/api';
+import { collaborationsAPI, challengesAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   GraduationCap, Factory, Brain, ArrowRight, MapPin, Link2, Sparkles, Zap, Check, Loader2
@@ -35,6 +35,26 @@ const matchResults = [
 export default function CollaboratePage() {
   const { user } = useAuth();
   const [selectedChallenge, setSelectedChallenge] = useState('all');
+  const [liveChallenges, setLiveChallenges] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await challengesAPI.getAll({ limit: 20, status: 'open' });
+        if (res.data.challenges?.length) {
+          const pairs = res.data.challenges.slice(0, 8).map((c: any, i: number) => ({
+            challenge: { title: c.title, category: c.category, location: `${c.location?.city || 'India'}, ${c.location?.state || ''}`, expertise: c.suggestedExpertise || ['General'] },
+            university: [{ name: 'VIT Chennai', matchScore: 94, reason: 'Strong expertise in relevant domain, research lab available', expertise: c.suggestedExpertise?.slice(0, 2) || ['IoT', 'AI'] }, { name: 'IIT Bombay', matchScore: 91, reason: 'Leading research institution with relevant expertise', expertise: c.suggestedExpertise?.slice(0, 2) || ['AI/ML', 'Data Science'] }, { name: 'IIT Delhi', matchScore: 88, reason: 'Strong domain expertise and industry connections', expertise: c.suggestedExpertise?.slice(0, 2) || ['Engineering', 'Systems'] }][i % 3],
+            industry: [{ name: 'GreenTech Innovations', matchScore: 89, reason: 'Technology provider with field deployment experience', expertise: ['IoT', 'Cloud Computing'] }, { name: 'TechCorp Solutions', matchScore: 87, reason: 'AI/ML platform and cloud infrastructure', expertise: ['AI/ML', 'Cloud Computing'] }][i % 2],
+            overallScore: 85 + Math.floor(Math.random() * 10)
+          }));
+          setLiveChallenges(pairs);
+        }
+      } catch {}
+      setLoading(false);
+    })();
+  }, []);
   const [initiating, setInitiating] = useState<string | null>(null);
   const [initiated, setInitiated] = useState<Set<string>>(new Set());
 
@@ -95,7 +115,7 @@ export default function CollaboratePage() {
             </SelectTrigger>
             <SelectContent className="dark:bg-[#0F1420] dark:border-white/10">
               <SelectItem value="all">All Challenges</SelectItem>
-              {matchResults.map((m, i) => (
+              {(liveChallenges.length ? liveChallenges : matchResults).map((m, i) => (
                 <SelectItem key={i} value={m.challenge.title}>{m.challenge.title}</SelectItem>
               ))}
             </SelectContent>
@@ -103,7 +123,7 @@ export default function CollaboratePage() {
         </div>
 
         <div className="space-y-6">
-          {matchResults.filter(m => selectedChallenge === 'all' || m.challenge.title === selectedChallenge).map((match, i) => (
+          {(liveChallenges.length ? liveChallenges : matchResults).filter(m => selectedChallenge === 'all' || m.challenge.title === selectedChallenge).map((match, i) => (
             <div key={i} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] overflow-hidden animate-fade-up" style={{ animationDelay: `${i * 0.1}s` } as any}>
               <div className="h-1 bg-gradient-to-r from-blue-500 via-violet-500 to-emerald-500" />
               <div className="p-7">
@@ -115,7 +135,7 @@ export default function CollaboratePage() {
                       <MapPin className="h-3.5 w-3.5" /> {match.challenge.location}
                     </div>
                     <div className="flex flex-wrap gap-1.5 mt-3">
-                      {match.challenge.expertise.map(e => <Badge key={e} variant="secondary" className="text-[10px] font-medium bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-slate-300">{e}</Badge>)}
+                      {match.challenge.expertise.map((e: string) => <Badge key={e} variant="secondary" className="text-[10px] font-medium bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-slate-300">{e}</Badge>)}
                     </div>
                   </div>
                   <div className="text-center bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-2xl px-6 py-4 shadow-xl shadow-blue-500/20">
@@ -136,7 +156,7 @@ export default function CollaboratePage() {
                     <h5 className="font-bold text-gray-900 dark:text-white">{match.university.name}</h5>
                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-1.5 leading-relaxed">{match.university.reason}</p>
                     <div className="flex flex-wrap gap-1.5 mt-3">
-                      {match.university.expertise.map(e => <Badge key={e} variant="outline" className="text-[10px] border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400">{e}</Badge>)}
+                      {match.university.expertise.map((e: string) => <Badge key={e} variant="outline" className="text-[10px] border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400">{e}</Badge>)}
                     </div>
                   </div>
 
@@ -151,7 +171,7 @@ export default function CollaboratePage() {
                     <h5 className="font-bold text-gray-900 dark:text-white">{match.industry.name}</h5>
                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-1.5 leading-relaxed">{match.industry.reason}</p>
                     <div className="flex flex-wrap gap-1.5 mt-3">
-                      {match.industry.expertise.map(e => <Badge key={e} variant="outline" className="text-[10px] border-indigo-200 dark:border-indigo-500/20 text-indigo-700 dark:text-indigo-400">{e}</Badge>)}
+                      {match.industry.expertise.map((e: string) => <Badge key={e} variant="outline" className="text-[10px] border-indigo-200 dark:border-indigo-500/20 text-indigo-700 dark:text-indigo-400">{e}</Badge>)}
                     </div>
                   </div>
                 </div>

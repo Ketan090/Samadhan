@@ -1,13 +1,14 @@
 'use client';
 import React, { useState, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { challengesAPI, aiMatchingAPI } from '@/lib/api';
-import { Camera, Image as ImageIcon, X, CheckCircle2, Clock, Sparkles, ArrowRight, Brain, Eye } from 'lucide-react';
+import { Camera, Image as ImageIcon, CheckCircle2, Clock, Sparkles, ArrowRight, Brain, Eye } from 'lucide-react';
 
 const categories = ['Environment','Healthcare','Education','Transportation','Agriculture','Infrastructure','Social Welfare','Technology'];
 
@@ -17,9 +18,13 @@ export default function SubmitComplaintPage() {
   const [category, setCategory] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [severity, setSeverity] = useState('medium');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [reference, setReference] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [aiStep, setAiStep] = useState(0);
   const [aiDone, setAiDone] = useState(false);
   const [aiChecks, setAiChecks] = useState({ relevant: false, usable: false, manipulation: false });
@@ -27,10 +32,11 @@ export default function SubmitComplaintPage() {
   const [visionAnalyzing, setVisionAnalyzing] = useState(false);
   const [showVisionPrompt, setShowVisionPrompt] = useState(false);
   const [visionPrefs, setVisionPrefs] = useState({ title: true, description: true, category: true });
+  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
 
-  const isValid = title.trim().length >= 6 && description.trim().length >= 20 && category && photo;
+  const isValid = title.trim().length >= 6 && description.trim().length >= 20 && category && photo && city.trim().length >= 2 && state.trim().length >= 2;
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -76,12 +82,15 @@ export default function SubmitComplaintPage() {
     setSubmitting(true);
     const ref = '#SAM-' + Math.floor(100000 + Math.random() * 900000);
     // Save first — never lose submission
-    let saved: any = { _id: ref.replace('#',''), title, description, category, location: { city: 'Your area', state: 'India', pincode: '' }, affectedPopulation: 1000, urgency: 'medium', severity: 'medium', status: 'submitted', verificationStatus: 'pending', photo: photo, createdAt: new Date().toISOString() };
+    let saved: any = { _id: ref.replace('#',''), title, description, category, location: { city: city.trim(), state: state.trim(), pincode: '' }, affectedPopulation: 1000, urgency: 'medium', severity, status: 'submitted', verificationStatus: 'pending', photo: photo, createdAt: new Date().toISOString() };
+    setError(null);
     try {
-      const res = await challengesAPI.create({ title, description, category, location: saved.location, affectedPopulation: saved.affectedPopulation, urgency: saved.urgency, severity: saved.severity, currentConsequences: '', existingAttempts: '', desiredOutcome: '', constraints: '', availableResources: '', suggestedExpertise: [], evidence: { links: [], images: photo ? [photo.slice(0,120)] : [] } });
+      const res = await challengesAPI.create({ title, description, category, location: saved.location, affectedPopulation: saved.affectedPopulation, urgency: saved.urgency, severity: saved.severity, currentConsequences: '', existingAttempts: '', desiredOutcome: '', constraints: '', availableResources: '', suggestedExpertise: [], evidence: { links: [], images: photo ? [photo] : [] } });
       saved = { ...res.data.challenge, photo };
       setReference('#' + saved._id.slice(-6).toUpperCase());
-    } catch {
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Submission failed. Please try again.';
+      setError(msg);
       setReference(ref);
       try { const ex = JSON.parse(localStorage.getItem('samadhanhub_submitted')||'[]'); localStorage.setItem('samadhanhub_submitted', JSON.stringify([saved, ...ex].slice(0,20))); localStorage.setItem('samadhanhub_last_ref', ref); } catch {}
     }
@@ -92,6 +101,7 @@ export default function SubmitComplaintPage() {
     setTimeout(()=> { setAiStep(2); setAiChecks({ relevant: true, usable: true, manipulation: true }); }, 1300);
     setTimeout(()=> setAiStep(3), 1900);
     setTimeout(()=> { setAiDone(true); setSubmitting(false); setSubmitted(true); }, 2300);
+    setTimeout(()=> router.push('/track'), 5500);
     // Background: store even if AI fails — already saved above
     try { const ex = JSON.parse(localStorage.getItem('samadhanhub_submitted')||'[]'); if(!ex.find((x:any)=>x._id===saved._id)) localStorage.setItem('samadhanhub_submitted', JSON.stringify([saved, ...ex].slice(0,20))); } catch{}
   };
@@ -170,6 +180,30 @@ export default function SubmitComplaintPage() {
             </Select>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-semibold">City <span className="text-red-500">*</span></label>
+              <Input value={city} onChange={e=>setCity(e.target.value)} placeholder="e.g. Ranchi" className="mt-2 h-12 rounded-xl" />
+            </div>
+            <div>
+              <label className="text-sm font-semibold">State <span className="text-red-500">*</span></label>
+              <Input value={state} onChange={e=>setState(e.target.value)} placeholder="e.g. Jharkhand" className="mt-2 h-12 rounded-xl" />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold">Severity</label>
+            <Select value={severity} onValueChange={setSeverity}>
+              <SelectTrigger className="mt-2 h-12 rounded-xl"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="critical">Critical</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div>
             <label className="text-sm font-semibold">Photo evidence <span className="text-red-500">*</span></label>
             <p className="text-xs text-slate-500 mt-1">Add a photo of the issue <span className="text-slate-400">— A photo helps us verify your complaint.</span></p>
@@ -219,6 +253,7 @@ export default function SubmitComplaintPage() {
             )}
           </div>
 
+          {error && <div className="rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 p-3 text-sm text-red-700 dark:text-red-400">{error}</div>}
           <Button onClick={handleSubmit} disabled={!isValid || submitting} className="w-full h-12 rounded-full bg-slate-900 dark:bg-white dark:text-slate-900 text-[15px] font-semibold disabled:opacity-50">
             {submitting ? 'Submitting...' : 'Submit Complaint'} <ArrowRight className="ml-2 h-4 w-4" />
           </Button>

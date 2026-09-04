@@ -4,11 +4,11 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { formatNumber, getStatusColor, getCategoryIcon } from '@/lib/utils';
-import { challengesAPI } from '@/lib/api';
+import { getStatusColor, getCategoryIcon } from '@/lib/utils';
+import { challengesAPI, analyticsAPI } from '@/lib/api';
 import {
   Factory, Lightbulb, Users, Link2, Rocket, DollarSign,
-  ArrowRight, Plus, TrendingUp, Shield, Loader2
+  ArrowRight, TrendingUp, Shield, Loader2
 } from 'lucide-react';
 
 export default function IndustryPortal() {
@@ -17,8 +17,9 @@ export default function IndustryPortal() {
     { title: 'Traffic Congestion Prediction', category: 'Transportation', location: 'Mumbai, Maharashtra', matchScore: 91, relevance: 'AI/ML + Computer Vision', status: 'open' },
     { title: 'Urban Flood Prevention Using IoT', category: 'Infrastructure', location: 'Chennai, Tamil Nadu', matchScore: 88, relevance: 'IoT + Data Analytics', status: 'open' },
   ]);
+  const [analytics, setAnalytics] = useState<any>(null);
   const [indLoading, setIndLoading] = useState(false);
-  useEffect(()=>{ (async()=>{ setIndLoading(true); try{ const r=await challengesAPI.getAll({limit:6, status:'open'}); if(r.data.challenges?.length) setLiveChallenges(r.data.challenges.map((c:any)=>({ title:c.title, category:c.category, location:`${c.location?.city||''}, ${c.location?.state||''}`, matchScore:87+Math.floor(Math.random()*8), relevance:(c.suggestedExpertise||['IoT','AI']).slice(0,2).join(' + '), status:c.status })))} catch{} finally{ setIndLoading(false);} })(); },[]);
+  useEffect(()=>{ (async()=>{ setIndLoading(true); try{ const [r, analyticsRes] = await Promise.all([challengesAPI.getAll({limit:6, status:'open'}), analyticsAPI.getOverview().catch(()=>null)]); if(analyticsRes) setAnalytics(analyticsRes.data.overview); if(r.data.challenges?.length) setLiveChallenges(r.data.challenges.map((c:any)=>({ title:c.title, category:c.category, location:`${c.location?.city||''}, ${c.location?.state||''}`, matchScore:87+Math.floor(Math.random()*8), relevance:(c.suggestedExpertise||['IoT','AI']).slice(0,2).join(' + '), status:c.status })))} catch{} finally{ setIndLoading(false);} })(); },[]);
   return (
     <div className="min-h-screen bg-white dark:bg-[#070A12]">
       <div className="container py-10">
@@ -34,10 +35,10 @@ export default function IndustryPortal() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
           {[
-            { label: 'Matching Challenges', value: '18', icon: Lightbulb, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10' },
-            { label: 'Mentorships', value: '4', icon: Users, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-500/10' },
-            { label: 'Active Partnerships', value: '6', icon: Link2, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
-            { label: 'Pilots Sponsored', value: '2', icon: Rocket, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10' },
+            { label: 'Matching Challenges', value: analytics?.challenges?.total ?? 0, icon: Lightbulb, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+            { label: 'Mentorships', value: analytics?.totalUsers ?? 0, icon: Users, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-500/10' },
+            { label: 'Active Partnerships', value: analytics?.activeCollaborations ?? 0, icon: Link2, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+            { label: 'Pilots Sponsored', value: analytics?.solutions?.pilot ?? 0, icon: Rocket, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10' },
           ].map(s => {
             const Icon = s.icon;
             return (

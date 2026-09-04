@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { formatNumber, getStatusColor, getSeverityColor, getCategoryIcon } from '@/lib/utils';
+import { formatNumber, getStatusColor, getSeverityColor, getCategoryIcon, formatDate } from '@/lib/utils';
+import { challengesAPI } from '@/lib/api';
 import { MapPin, Users, ArrowRight, Layers, X, Filter, Navigation, Search, List, Maximize2, Minus, Plus, Eye, EyeOff, Target, AlertTriangle, Clock, ChevronRight, LocateFixed, RefreshCcw } from 'lucide-react';
 
 const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
@@ -14,17 +15,18 @@ const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLaye
 const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
 const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false });
 
-const challenges = [
-  { _id: '1', title: 'Smart Waste Collection', category: 'Environment', location: { city: 'Ranchi', state: 'Jharkhand', coordinates: { lat: 23.3441, lng: 85.3096 } }, severity: 'high', affectedPopulation: 25000, status: 'open', numberOfSolutions: 2, date: '2024-01-15', description: 'Ranchi generates 450 tonnes of municipal solid waste daily, but collection efficiency is only ~40%. Poor segregation and routing cause landfill overflow and disease.' },
-  { _id: '2', title: 'Rural Water Quality Monitoring', category: 'Healthcare', location: { city: 'Patna', state: 'Bihar', coordinates: { lat: 25.6093, lng: 85.1376 } }, severity: 'critical', affectedPopulation: 150000, status: 'open', numberOfSolutions: 1, date: '2024-01-20', description: 'Over 200 villages rely on groundwater contaminated with arsenic and fluoride. No real-time testing network exists.' },
-  { _id: '3', title: 'Traffic Congestion Prediction', category: 'Transportation', location: { city: 'Mumbai', state: 'Maharashtra', coordinates: { lat: 19.0760, lng: 72.8777 } }, severity: 'high', affectedPopulation: 500000, status: 'open', numberOfSolutions: 3, date: '2024-02-01', description: 'Peak-hour commutes take 200% longer. No AI-driven signal optimization or predictive routing is deployed.' },
-  { _id: '4', title: 'Telemedicine for Remote Areas', category: 'Healthcare', location: { city: 'Hyderabad', state: 'Telangana', coordinates: { lat: 17.3850, lng: 78.4867 } }, severity: 'critical', affectedPopulation: 75000, status: 'open', numberOfSolutions: 1, date: '2024-02-10', description: 'Remote villages are 15–30 km from the nearest PHC. Specialist access is near zero without a telemedicine corridor.' },
-  { _id: '5', title: 'Urban Flood Prevention', category: 'Infrastructure', location: { city: 'Chennai', state: 'Tamil Nadu', coordinates: { lat: 13.0827, lng: 80.2707 } }, severity: 'critical', affectedPopulation: 300000, status: 'open', numberOfSolutions: 2, date: '2024-02-15', description: 'Monsoon floods paralyze drainage in 70+ wards annually. Early warning and micro-catchment routing is missing.' },
-  { _id: '6', title: 'Digital Education Access', category: 'Education', location: { city: 'Patna', state: 'Bihar', coordinates: { lat: 25.5913, lng: 84.95 } }, severity: 'high', affectedPopulation: 500000, status: 'open', numberOfSolutions: 4, date: '2024-02-20', description: 'Millions lack quality digital education, devices and vernacular content. Dropout rates spike after grade 8.' },
-  { _id: '7', title: 'Agricultural Supply Chain', category: 'Agriculture', location: { city: 'Ranchi', state: 'Jharkhand', coordinates: { lat: 23.3696, lng: 85.55 } }, severity: 'high', affectedPopulation: 200000, status: 'open', numberOfSolutions: 1, date: '2024-03-01', description: 'Farmers lose 25–40% of produce due to cold-chain and market-linkage gaps between farm and mandi.' },
-  { _id: '8', title: 'Public Transport Optimization', category: 'Transportation', location: { city: 'Kolkata', state: 'West Bengal', coordinates: { lat: 22.5726, lng: 88.3639 } }, severity: 'medium', affectedPopulation: 1000000, status: 'open', numberOfSolutions: 0, date: '2024-03-05', description: 'Bus routes are unoptimized and overcrowded. No demand-responsive scheduling or live tracking exists.' },
-  { _id: '9', title: 'Air Quality Early Warning - Delhi', category: 'Environment', location: { city: 'New Delhi', state: 'Delhi', coordinates: { lat: 28.6139, lng: 77.2090 } }, severity: 'critical', affectedPopulation: 2000000, status: 'open', numberOfSolutions: 5, date: '2024-03-10', description: 'Winter AQI regularly exceeds 300. Hyperlocal forecasting and citizen advisories need block-level precision.' },
-  { _id: '10', title: 'Skilling for Green Jobs', category: 'Social Welfare', location: { city: 'Bengaluru', state: 'Karnataka', coordinates: { lat: 12.9716, lng: 77.5946 } }, severity: 'medium', affectedPopulation: 90000, status: 'open', numberOfSolutions: 2, date: '2024-03-12', description: 'Solar and EV maintenance roles go unfilled. No standardized curriculum or placement linkage exists.' },
+// Demo fallback data — shown when API is unavailable
+const DEMO_CHALLENGES = [
+  { _id: '1', title: 'Smart Waste Collection', category: 'Environment', location: { city: 'Ranchi', state: 'Jharkhand', coordinates: { lat: 23.3441, lng: 85.3096 } }, severity: 'high', affectedPopulation: 25000, status: 'open', numberOfSolutions: 2, createdAt: '2024-01-15', description: 'Ranchi generates 450 tonnes of municipal solid waste daily, but collection efficiency is only ~40%. Poor segregation and routing cause landfill overflow and disease.' },
+  { _id: '2', title: 'Rural Water Quality Monitoring', category: 'Healthcare', location: { city: 'Patna', state: 'Bihar', coordinates: { lat: 25.6093, lng: 85.1376 } }, severity: 'critical', affectedPopulation: 150000, status: 'open', numberOfSolutions: 1, createdAt: '2024-01-20', description: 'Over 200 villages rely on groundwater contaminated with arsenic and fluoride. No real-time testing network exists.' },
+  { _id: '3', title: 'Traffic Congestion Prediction', category: 'Transportation', location: { city: 'Mumbai', state: 'Maharashtra', coordinates: { lat: 19.0760, lng: 72.8777 } }, severity: 'high', affectedPopulation: 500000, status: 'open', numberOfSolutions: 3, createdAt: '2024-02-01', description: 'Peak-hour commutes take 200% longer. No AI-driven signal optimization or predictive routing is deployed.' },
+  { _id: '4', title: 'Telemedicine for Remote Areas', category: 'Healthcare', location: { city: 'Hyderabad', state: 'Telangana', coordinates: { lat: 17.3850, lng: 78.4867 } }, severity: 'critical', affectedPopulation: 75000, status: 'open', numberOfSolutions: 1, createdAt: '2024-02-10', description: 'Remote villages are 15–30 km from the nearest PHC. Specialist access is near zero without a telemedicine corridor.' },
+  { _id: '5', title: 'Urban Flood Prevention', category: 'Infrastructure', location: { city: 'Chennai', state: 'Tamil Nadu', coordinates: { lat: 13.0827, lng: 80.2707 } }, severity: 'critical', affectedPopulation: 300000, status: 'open', numberOfSolutions: 2, createdAt: '2024-02-15', description: 'Monsoon floods paralyze drainage in 70+ wards annually. Early warning and micro-catchment routing is missing.' },
+  { _id: '6', title: 'Digital Education Access', category: 'Education', location: { city: 'Patna', state: 'Bihar', coordinates: { lat: 25.5913, lng: 84.95 } }, severity: 'high', affectedPopulation: 500000, status: 'open', numberOfSolutions: 4, createdAt: '2024-02-20', description: 'Millions lack quality digital education, devices and vernacular content. Dropout rates spike after grade 8.' },
+  { _id: '7', title: 'Agricultural Supply Chain', category: 'Agriculture', location: { city: 'Ranchi', state: 'Jharkhand', coordinates: { lat: 23.3696, lng: 85.55 } }, severity: 'high', affectedPopulation: 200000, status: 'open', numberOfSolutions: 1, createdAt: '2024-03-01', description: 'Farmers lose 25–40% of produce due to cold-chain and market-linkage gaps between farm and mandi.' },
+  { _id: '8', title: 'Public Transport Optimization', category: 'Transportation', location: { city: 'Kolkata', state: 'West Bengal', coordinates: { lat: 22.5726, lng: 88.3639 } }, severity: 'medium', affectedPopulation: 1000000, status: 'open', numberOfSolutions: 0, createdAt: '2024-03-05', description: 'Bus routes are unoptimized and overcrowded. No demand-responsive scheduling or live tracking exists.' },
+  { _id: '9', title: 'Air Quality Early Warning - Delhi', category: 'Environment', location: { city: 'New Delhi', state: 'Delhi', coordinates: { lat: 28.6139, lng: 77.2090 } }, severity: 'critical', affectedPopulation: 2000000, status: 'open', numberOfSolutions: 5, createdAt: '2024-03-10', description: 'Winter AQI regularly exceeds 300. Hyperlocal forecasting and citizen advisories need block-level precision.' },
+  { _id: '10', title: 'Skilling for Green Jobs', category: 'Social Welfare', location: { city: 'Bengaluru', state: 'Karnataka', coordinates: { lat: 12.9716, lng: 77.5946 } }, severity: 'medium', affectedPopulation: 90000, status: 'open', numberOfSolutions: 2, createdAt: '2024-03-12', description: 'Solar and EV maintenance roles go unfilled. No standardized curriculum or placement linkage exists.' },
 ];
 
 const categoryConfig: Record<string, { color: string; bg: string; dot: string }> = {
@@ -52,10 +54,41 @@ export default function ChallengeMapPage() {
   const [search, setSearch] = useState('');
   const [showPanel, setShowPanel] = useState(true);
   const [L, setL] = useState<any>(null);
+  const [mapStyle, setMapStyle] = useState<'street' | 'satellite' | 'dark'>('street');
+  const [challenges, setChallenges] = useState<any[]>(DEMO_CHALLENGES);
   const mapRef = useRef<any>(null);
 
   useEffect(() => {
     import('leaflet').then((m) => setL(m.default));
+  }, []);
+
+  // Fetch real challenges from API, fall back to demo data
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await challengesAPI.getAll({ limit: 100 });
+        const list = res.data.challenges;
+        if (list?.length) {
+          // Normalize API data to match the map's expected shape
+          const normalized = list.map((c: any) => ({
+            ...c,
+            location: {
+              city: c.location?.city || 'Unknown',
+              state: c.location?.state || 'India',
+              coordinates: c.location?.coordinates || { lat: 22.5 + Math.random() * 8, lng: 78 + Math.random() * 12 },
+            },
+            severity: c.severity || 'medium',
+            affectedPopulation: c.affectedPopulation || 0,
+            numberOfSolutions: c.numberOfSolutions || 0,
+            createdAt: c.createdAt,
+            description: c.description || '',
+          }));
+          setChallenges(normalized);
+        }
+      } catch {
+        // Keep demo data
+      }
+    })();
   }, []);
 
   const filtered = useMemo(() => {
@@ -218,10 +251,27 @@ export default function ChallengeMapPage() {
                     zoomControl={false}
                     ref={mapRef}
                   >
-                    <TileLayer
-                      attribution='&copy; OpenStreetMap &copy; CARTO'
-                      url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                    />
+                    {mapStyle === 'street' && (
+                      <TileLayer
+                        attribution='&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+                        maxZoom={19}
+                      />
+                    )}
+                    {mapStyle === 'satellite' && (
+                      <TileLayer
+                        attribution='&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                        maxZoom={19}
+                      />
+                    )}
+                    {mapStyle === 'dark' && (
+                      <TileLayer
+                        attribution='&copy; Esri &mdash; Esri, DeLorme, NAVTEQ'
+                        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+                        maxZoom={16}
+                      />
+                    )}
                     {filtered.map((c) => (
                       <Marker
                         key={c._id}
@@ -315,7 +365,7 @@ export default function ChallengeMapPage() {
                       </div>
                       <h3 className="text-[17px] font-bold leading-tight tracking-tight">{selected.title}</h3>
                       <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500 flex-wrap">
-                        <span>{getCategoryIcon(selected.category)} {selected.category}</span><span className="opacity-30">·</span><span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{selected.location.city}, {selected.location.state}</span><span className="opacity-30">·</span><span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{selected.date}</span>
+                        <span>{getCategoryIcon(selected.category)} {selected.category}</span><span className="opacity-30">·</span><span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{selected.location.city}, {selected.location.state}</span><span className="opacity-30">·</span><span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{formatDate(selected.createdAt || selected.date)}</span>
                       </div>
                       <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{selected.description}</p>
 
@@ -332,7 +382,7 @@ export default function ChallengeMapPage() {
                         <div className="text-xs font-bold tracking-widest uppercase text-slate-500 mb-3">Timeline</div>
                         <div className="relative pl-6 space-y-4 before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-px before:bg-slate-200 dark:before:bg-white/10">
                           {[
-                            { t: 'Challenge submitted', d: selected.date, dot: 'bg-slate-900 dark:bg-white' },
+                            { t: 'Challenge submitted', d: formatDate(selected.createdAt || selected.date), dot: 'bg-slate-900 dark:bg-white' },
                             { t: 'Verification pending', d: 'Awaiting government review', dot: 'bg-amber-500' },
                             { t: 'AI analysis complete', d: `${selected.numberOfSolutions} potential matches identified`, dot: 'bg-violet-500' },
                           ].map(r => (

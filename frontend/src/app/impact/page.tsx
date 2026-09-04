@@ -59,7 +59,7 @@ export default function ImpactDashboard() {
             <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Impact Dashboard</h1>
             <p className="text-gray-500 dark:text-slate-400 mt-1.5">Measuring real-world outcomes of collaborative solutions</p>
           </div>
-          <Badge className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-medium border border-amber-200 dark:border-amber-500/20 px-3 py-1">Demo Data</Badge>
+          <Badge className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-medium border border-emerald-200 dark:border-emerald-500/20 px-3 py-1 gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Data</Badge>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-10">

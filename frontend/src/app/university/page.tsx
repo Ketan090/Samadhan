@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatNumber, getStatusColor, getCategoryIcon } from '@/lib/utils';
-import { challengesAPI } from '@/lib/api';
+import { challengesAPI, analyticsAPI } from '@/lib/api';
 import { GraduationCap, Users, Lightbulb, Rocket, MapPin, ArrowRight, Plus, Award, Loader2 } from 'lucide-react';
 
 const fallbackChallenges = [
@@ -27,12 +27,17 @@ const teams = [
 
 export default function UniversityPortal() {
   const [challenges, setChallenges] = useState<any[]>(fallbackChallenges);
+  const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   useEffect(()=>{
     (async()=>{
       setLoading(true);
       try{
-        const r = await challengesAPI.getAll({ limit: 6, status: 'open' });
+        const [r, analyticsRes] = await Promise.all([
+          challengesAPI.getAll({ limit: 6, status: 'open' }),
+          analyticsAPI.getOverview().catch(() => null)
+        ]);
+        if (analyticsRes) setAnalytics(analyticsRes.data.overview);
         if(r.data.challenges?.length){
           const list = r.data.challenges.map((c:any)=> ({ _id:c._id, title:c.title, category:c.category, status:c.status, affectedPopulation:c.affectedPopulation, location:`${c.location?.city||''}, ${c.location?.state||''}`, matchScore: 86 + Math.floor(Math.random()*8) }));
           setChallenges(list);
@@ -55,10 +60,10 @@ export default function UniversityPortal() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
           {[
-            { label: 'Relevant Challenges', value: '12', icon: Lightbulb, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10' },
-            { label: 'Active Projects', value: '3', icon: Rocket, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
-            { label: 'Student Teams', value: '8', icon: Users, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-500/10' },
-            { label: 'Solutions Submitted', value: '5', icon: Award, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10' },
+            { label: 'Relevant Challenges', value: analytics?.challenges?.total ?? 0, icon: Lightbulb, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+            { label: 'Active Projects', value: analytics?.activeCollaborations ?? 0, icon: Rocket, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+            { label: 'Student Teams', value: analytics?.totalUsers ?? 0, icon: Users, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-500/10' },
+            { label: 'Solutions Submitted', value: analytics?.solutions?.total ?? 0, icon: Award, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10' },
           ].map(s => {
             const Icon = s.icon;
             return (

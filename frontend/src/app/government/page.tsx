@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatNumber, getStatusColor, getCategoryIcon } from '@/lib/utils';
-import { challengesAPI } from '@/lib/api';
+import { challengesAPI, analyticsAPI } from '@/lib/api';
 import {
   Shield, CheckCircle2, Clock, AlertTriangle, Rocket, BarChart3,
-  ArrowRight, Users, Lightbulb, Eye, Plus, Loader2
+  Users, Lightbulb, Eye, Plus, Loader2
 } from 'lucide-react';
 
 export default function GovernmentDashboard() {
@@ -17,10 +17,15 @@ export default function GovernmentDashboard() {
     { _id: 'demo-2', title: 'Digital Literacy for Senior Citizens', category: 'Education', city: 'Pune', state: 'Maharashtra', submittedBy: 'Digital India Foundation', affected: 50000 },
   ]);
   const [actioning, setActioning] = useState<string | null>(null);
+  const [analytics, setAnalytics] = useState<any>(null);
   const loadPending = async () => {
     try {
-      const res = await challengesAPI.getAll({ status: 'submitted', limit: 20 });
-      const list = res.data.challenges?.length ? res.data.challenges.map((c:any)=>({ _id:c._id, title:c.title, category:c.category, city:c.location?.city, state:c.location?.state, submittedBy: c.submittedBy?.name || c.organization?.name || 'Citizen', affected: c.affectedPopulation })) : pending;
+      const [res, analyticsRes] = await Promise.all([
+        challengesAPI.getAll({ status: 'submitted', limit: 20 }),
+        analyticsAPI.getOverview().catch(() => null)
+      ]);
+      if (analyticsRes) setAnalytics(analyticsRes.data.overview);
+      const list = res.data.challenges?.length ? res.data.challenges.map((c:any)=>({ _id:c._id, title:c.title, category:c.category, city:c.location?.city, state:c.location?.state, submittedBy: c.submittedBy?.name || c.organization?.name || 'Citizen', affected: c.affectedPopulation })) : [];
       setPending(list);
     } catch {}
   };
@@ -48,18 +53,18 @@ export default function GovernmentDashboard() {
             <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Government Dashboard</h1>
             <p className="text-gray-500 dark:text-slate-400 mt-1">Ministry of Electronics and Information Technology</p>
           </div>
-          <Badge className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-medium border border-amber-200 dark:border-amber-500/20 px-3 py-1">Demo Data</Badge>
+          <Badge className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-medium border border-emerald-200 dark:border-emerald-500/20 px-3 py-1 gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Data</Badge>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-10">
           {[
-            { label: 'Total Challenges', value: '156', icon: Lightbulb, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10' },
-            { label: 'Pending Verification', value: '12', icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10' },
-            { label: 'Active Collaborations', value: '67', icon: Users, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-500/10' },
-            { label: 'Awaiting Evaluation', value: '8', icon: Eye, color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-500/10' },
-            { label: 'Active Pilots', value: '12', icon: Rocket, color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-500/10' },
-            { label: 'Implemented', value: '6', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
-            { label: 'People Impacted', value: '425K', icon: BarChart3, color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-500/10' },
+            { label: 'Total Challenges', value: analytics?.challenges?.total ?? '—', icon: Lightbulb, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+            { label: 'Pending Verification', value: analytics?.challenges?.open ?? pending.length ?? '—', icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10' },
+            { label: 'Active Collaborations', value: analytics?.activeCollaborations ?? '—', icon: Users, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-500/10' },
+            { label: 'Awaiting Evaluation', value: analytics?.solutions?.pilot ?? '—', icon: Eye, color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-500/10' },
+            { label: 'Active Pilots', value: analytics?.solutions?.pilot ?? '—', icon: Rocket, color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-500/10' },
+            { label: 'Implemented', value: analytics?.challenges?.implemented ?? '—', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+            { label: 'People Impacted', value: formatNumber(analytics?.totalPeopleImpacted ?? 0) || '—', icon: BarChart3, color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-500/10' },
           ].map(s => {
             const Icon = s.icon;
             return (
@@ -97,7 +102,7 @@ export default function GovernmentDashboard() {
                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-1.5 truncate">Submitted by {ch.submittedBy || 'Citizen'}</p>
                   </div>
                   <div className="flex gap-2 shrink-0 w-full sm:w-auto">
-                    <Button size="sm" disabled={actioning===ch._id} onClick={()=>handleVerify(ch._id)} className="flex-1 sm:flex-none bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl min-w-0 sm:min-w-[92px] justify-center">{actioning===ch._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><CheckCircle2 className="h-4 w-4 mr-1" /> Verify</>}</Button>
+                    <Button size="sm" variant="default" disabled={actioning===ch._id} onClick={()=>handleVerify(ch._id)} className="flex-1 sm:flex-none bg-emerald-500 hover:bg-emerald-600 text-white dark:text-white rounded-xl min-w-0 sm:min-w-[92px] justify-center shadow-sm hover:shadow-md hover:-translate-y-[1px]">{actioning===ch._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><CheckCircle2 className="h-4 w-4 mr-1" /> Verify</>}</Button>
                     <Button size="sm" variant="outline" disabled={actioning===ch._id} onClick={()=>handleReject(ch._id)} className="flex-1 sm:flex-none text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl min-w-0 sm:min-w-[92px] justify-center">{actioning===ch._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><AlertTriangle className="h-4 w-4 mr-1" /> Reject</>}</Button>
                   </div>
                 </div>
