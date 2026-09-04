@@ -223,7 +223,7 @@ export default function ChallengeMapPage() {
               <div className="h-[420px] sm:h-[560px] xl:h-[640px] relative bg-slate-100 dark:bg-[#0a0f1f]">
                 {L ? (
                   <MapContainer center={[22.5,79.5]} zoom={5} style={{height:'100%',width:'100%',background: mapStyle==='dark' ? '#0f172a' : '#eef2f7'}} zoomControl={false} attributionControl={false} preferCanvas={false} ref={mapRef}>
-                    {mapStyle==='street' && <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={19} />}
+                    {mapStyle==='street' && <TileLayer attribution='&copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community' url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}" maxZoom={19} />}
                     {mapStyle==='satellite' && <TileLayer attribution='&copy; Esri' url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" maxZoom={19} />}
                     {mapStyle==='dark' && <TileLayer attribution='&copy; Esri' url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}" maxZoom={16} />}
                     <MapController onReady={setMapInstance} />
@@ -238,7 +238,7 @@ export default function ChallengeMapPage() {
                     ))}
                   </MapContainer>
                 ) : (
-                  <div className="h-full grid place-items-center bg-white dark:bg-[#0F1420]"><div className="text-center"><div className="h-10 w-10 rounded-full border-2 border-slate-200 border-t-violet-600 animate-spin mx-auto" /><p className="text-sm font-medium mt-3">Loading premium map…</p><p className="text-xs text-slate-400">OSM Street · Satellite · Dark — clustered</p></div></div>
+                  <div className="h-full grid place-items-center bg-white dark:bg-[#0F1420]"><div className="text-center"><div className="h-10 w-10 rounded-full border-2 border-slate-200 border-t-violet-600 animate-spin mx-auto" /><p className="text-sm font-medium mt-3">Loading premium map…</p><p className="text-xs text-slate-400">Esri Street · Satellite · Dark — all English, clustered</p></div></div>
                 )}
 
                 <div className="absolute top-3 left-3 z-[400] flex flex-col gap-1.5 pointer-events-auto">
@@ -281,7 +281,7 @@ export default function ChallengeMapPage() {
               </div>
 
               <div className="flex items-center justify-between px-3 py-2.5 bg-slate-50 dark:bg-white/[0.03] border-t border-slate-200 dark:border-white/10 text-xs">
-                <span className="text-slate-500 flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> OSM · Clustered · Live</span>
+                <span className="text-slate-500 flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Esri · Premium · English · Live</span>
                 <span className="hidden sm:inline-flex items-center gap-1 text-slate-400"><Clock className="h-3 w-3" /> Click pin or cluster to inspect</span>
               </div>
             </div>
