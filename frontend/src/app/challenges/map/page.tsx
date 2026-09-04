@@ -14,6 +14,12 @@ const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapCo
 const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
 const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
 const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false });
+function MapController({ onReady }: { onReady: (m:any)=>void }){
+  const mod = require('react-leaflet') as any;
+  const map = mod.useMap();
+  React.useEffect(()=>{ onReady(map); }, [map, onReady]);
+  return null;
+}
 
 const DEMO_CHALLENGES = [
   { _id: '1', title: 'Smart Waste Collection', category: 'Environment', location: { city: 'Ranchi', state: 'Jharkhand', coordinates: { lat: 23.3441, lng: 85.3096 } }, severity: 'high', affectedPopulation: 25000, status: 'open', numberOfSolutions: 2, createdAt: '2024-01-15', description: 'Ranchi generates 450 tonnes waste daily, collection only 40%.' },
@@ -51,6 +57,7 @@ export default function ChallengeMapPage() {
   const [mapStyle, setMapStyle] = useState<'street' | 'satellite' | 'dark'>('street');
   const [legendOpen, setLegendOpen] = useState(true);
   const [challenges, setChallenges] = useState<any[]>(DEMO_CHALLENGES);
+  const [mapInstance, setMapInstance] = useState<any>(null);
   const mapRef = useRef<any>(null);
 
   useEffect(() => {
@@ -136,12 +143,15 @@ export default function ChallengeMapPage() {
   };
 
   const flyTo = (lat: number, lng: number, z=7) => {
-    const m: any = mapRef.current;
-    const target = (m?.leafletElement) || m;
-    if (target?.flyTo) target.flyTo([lat, lng], z, { duration: 0.9 });
+    if (mapInstance?.flyTo) mapInstance.flyTo([lat, lng], z, { duration: 0.9 });
+    else {
+      const m: any = mapRef.current;
+      const target = (m?.leafletElement) || m;
+      if (target?.flyTo) target.flyTo([lat, lng], z, { duration: 0.9 });
+    }
   };
-  const handleZoomIn = () => { const m:any = mapRef.current; (m?.leafletElement||m)?.zoomIn?.(); const t=(m?.leafletElement||m); if(t?.getZoom) t.setZoom(t.getZoom()+1); };
-  const handleZoomOut = () => { const m:any = mapRef.current; (m?.leafletElement||m)?.zoomOut?.(); const t=(m?.leafletElement||m); if(t?.getZoom) t.setZoom(t.getZoom()-1); };
+  const handleZoomIn = () => { if (mapInstance?.zoomIn) mapInstance.zoomIn(); else { const m:any = mapRef.current; (m?.leafletElement||m)?.zoomIn?.(); const t=(m?.leafletElement||m); if(t?.getZoom) t.setZoom(t.getZoom()+1); } };
+  const handleZoomOut = () => { if (mapInstance?.zoomOut) mapInstance.zoomOut(); else { const m:any = mapRef.current; (m?.leafletElement||m)?.zoomOut?.(); const t=(m?.leafletElement||m); if(t?.getZoom) t.setZoom(t.getZoom()-1); } };
   const handleResetView = () => flyTo(22.5, 79.5, 5);
   const handleLocate = () => {
     if (!navigator.geolocation) return;
@@ -150,6 +160,7 @@ export default function ChallengeMapPage() {
   const handleSelect = (c:any)=>{ setSelected(c); setShowPanel(true); flyTo(c.location.coordinates.lat, c.location.coordinates.lng, 7); };
   const fitAll = () => {
     if(!filtered.length) return;
+    if (mapInstance?.fitBounds) { const bounds = filtered.map(c=>[c.location.coordinates.lat,c.location.coordinates.lng]) as any; mapInstance.fitBounds(bounds,{padding:[40,40],maxZoom:8}); return; }
     const m:any = mapRef.current; const target=(m?.leafletElement||m);
     const bounds = filtered.map(c=>[c.location.coordinates.lat,c.location.coordinates.lng]) as any;
     if(target?.fitBounds) target.fitBounds(bounds,{padding:[40,40],maxZoom:8});
@@ -211,10 +222,11 @@ export default function ChallengeMapPage() {
             <div className="rounded-[20px] overflow-hidden border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] shadow-sm relative">
               <div className="h-[420px] sm:h-[560px] xl:h-[640px] relative bg-slate-100 dark:bg-[#0a0f1f]">
                 {L ? (
-                  <MapContainer center={[22.5,79.5]} zoom={5} style={{height:'100%',width:'100%',background: mapStyle==='dark' ? '#0f172a' : '#eef2f7'}} zoomControl={false} attributionControl={false} preferCanvas={false}>
+                  <MapContainer center={[22.5,79.5]} zoom={5} style={{height:'100%',width:'100%',background: mapStyle==='dark' ? '#0f172a' : '#eef2f7'}} zoomControl={false} attributionControl={false} preferCanvas={false} ref={mapRef}>
                     {mapStyle==='street' && <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={19} />}
                     {mapStyle==='satellite' && <TileLayer attribution='&copy; Esri' url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" maxZoom={19} />}
                     {mapStyle==='dark' && <TileLayer attribution='&copy; Esri' url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}" maxZoom={16} />}
+                    <MapController onReady={setMapInstance} />
                     {clusters.map(c=> c.count>1 ? (
                       <Marker key={c.key} position={[c.lat,c.lng]} icon={createIcon(c.items[0].category,false,c.items[0].severity,true as any)} eventHandlers={{click:()=>flyTo(c.lat,c.lng,8)}}>
                         <Popup maxWidth={300}><div className="p-1"><div className="text-sm font-bold">{c.count} challenges here</div><div className="text-xs text-slate-500">{c.items.map((x:any)=>x.title).slice(0,3).join(' • ')}</div><Button size="sm" className="mt-2 rounded-full h-7 text-xs w-full" onClick={()=>flyTo(c.lat,c.lng,9)}>Zoom in</Button></div></Popup>
