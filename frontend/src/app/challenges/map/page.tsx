@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatNumber, getStatusColor, getSeverityColor, getCategoryIcon, formatDate } from '@/lib/utils';
 import { challengesAPI } from '@/lib/api';
-import { MapPin, Users, ArrowRight, Layers, X, Filter, Navigation, Search, List, Maximize2, Minus, Plus, Eye, EyeOff, Target, AlertTriangle, Clock, ChevronRight, LocateFixed, RefreshCcw } from 'lucide-react';
+import { MapPin, Users, ArrowRight, Layers, X, Filter, Navigation, Search, List, Maximize2, Minus, Plus, Eye, EyeOff, Target, AlertTriangle, Clock, ChevronRight, LocateFixed, RefreshCcw, Share2, Scan } from 'lucide-react';
 
 const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
 const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
@@ -51,6 +51,7 @@ export default function ChallengeMapPage() {
   const [selected, setSelected] = useState<any>(null);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [severityFilter, setSeverityFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [showPanel, setShowPanel] = useState(true);
   const [L, setL] = useState<any>(null);
@@ -60,6 +61,16 @@ export default function ChallengeMapPage() {
 
   useEffect(() => {
     import('leaflet').then((m) => setL(m.default));
+  }, []);
+
+  // Restore filters from URL on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('cat')) setCategoryFilter(params.get('cat')!);
+    if (params.get('sev')) setSeverityFilter(params.get('sev')!);
+    if (params.get('status')) setStatusFilter(params.get('status')!);
+    if (params.get('q')) setSearch(params.get('q')!);
   }, []);
 
   // Fetch real challenges from API, fall back to demo data
@@ -95,10 +106,11 @@ export default function ChallengeMapPage() {
     return challenges.filter(c => {
       if (categoryFilter !== 'all' && c.category !== categoryFilter) return false;
       if (severityFilter !== 'all' && c.severity !== severityFilter) return false;
+      if (statusFilter !== 'all' && c.status !== statusFilter) return false;
       if (search && !`${c.title} ${c.location.city} ${c.location.state} ${c.category}`.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [categoryFilter, severityFilter, search]);
+  }, [categoryFilter, severityFilter, statusFilter, search]);
 
   const stats = useMemo(() => {
     const bySeverity = filtered.reduce((acc: any, c) => { acc[c.severity] = (acc[c.severity] || 0) + 1; return acc; }, {});
@@ -163,6 +175,24 @@ export default function ChallengeMapPage() {
     flyTo(c.location.coordinates.lat, c.location.coordinates.lng);
   };
 
+  const fitAll = () => {
+    if (!filtered.length) return;
+    const m: any = mapRef.current;
+    const bounds = filtered.map(c => [c.location.coordinates.lat, c.location.coordinates.lng]);
+    if (m?.fitBounds) m.fitBounds(bounds, { padding: [40, 40], maxZoom: 8, duration: 0.9 });
+    else if (m?.leafletElement?.fitBounds) m.leafletElement.fitBounds(bounds, { padding: [40, 40], maxZoom: 8, duration: 0.9 });
+  };
+
+  const shareLink = () => {
+    const params = new URLSearchParams();
+    if (categoryFilter !== 'all') params.set('cat', categoryFilter);
+    if (severityFilter !== 'all') params.set('sev', severityFilter);
+    if (statusFilter !== 'all') params.set('status', statusFilter);
+    if (search) params.set('q', search);
+    const url = `${window.location.origin}/challenges/map${params.toString() ? '?' + params.toString() : ''}`;
+    navigator.clipboard?.writeText(url);
+  };
+
   return (
     <div className="min-h-screen bg-[#f8fafc] dark:bg-[#070A12]">
       <style>{`@keyframes ping{75%,100%{transform:scale(1.9);opacity:0}}`}</style>
@@ -182,6 +212,7 @@ export default function ChallengeMapPage() {
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              <Link href="/challenges/submit"><Button size="sm" className="rounded-full h-9 gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-sm"><Plus className="h-4 w-4" /> Submit</Button></Link>
               <Link href="/challenges"><Button variant="outline" className="rounded-full h-9 gap-1.5 bg-white dark:bg-white/5"><List className="h-4 w-4" /> List</Button></Link>
               <Button variant="outline" onClick={() => setShowPanel(!showPanel)} className="rounded-full h-9 gap-1.5 bg-white dark:bg-white/5">
                 {showPanel ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />} {showPanel ? 'Hide panel' : 'Show panel'}
@@ -221,16 +252,21 @@ export default function ChallengeMapPage() {
                 <SelectTrigger className="w-[150px] h-10 rounded-full bg-white dark:bg-[#070A12]"><AlertTriangle className="h-3.5 w-3.5 mr-1.5 text-slate-400" /><SelectValue placeholder="Severity" /></SelectTrigger>
                 <SelectContent><SelectItem value="all">All severities</SelectItem><SelectItem value="critical">Critical</SelectItem><SelectItem value="high">High</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="low">Low</SelectItem></SelectContent>
               </Select>
-              {(categoryFilter !== 'all' || severityFilter !== 'all' || search) && (
-                <Button variant="ghost" onClick={() => { setCategoryFilter('all'); setSeverityFilter('all'); setSearch(''); setSelected(null); }} className="h-10 rounded-full gap-1.5"><RefreshCcw className="h-3.5 w-3.5" /> Reset</Button>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[150px] h-10 rounded-full bg-white dark:bg-[#070A12]"><Clock className="h-3.5 w-3.5 mr-1.5 text-slate-400" /><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectContent><SelectItem value="all">All statuses</SelectItem><SelectItem value="open">Open</SelectItem><SelectItem value="verified">Verified</SelectItem><SelectItem value="in-progress">In Progress</SelectItem><SelectItem value="solved">Solved</SelectItem></SelectContent>
+              </Select>
+              {(categoryFilter !== 'all' || severityFilter !== 'all' || statusFilter !== 'all' || search) && (
+                <Button variant="ghost" onClick={() => { setCategoryFilter('all'); setSeverityFilter('all'); setStatusFilter('all'); setSearch(''); setSelected(null); }} className="h-10 rounded-full gap-1.5"><RefreshCcw className="h-3.5 w-3.5" /> Reset</Button>
               )}
             </div>
           </div>
 
-          {(categoryFilter !== 'all' || severityFilter !== 'all' || search) && (
+          {(categoryFilter !== 'all' || severityFilter !== 'all' || statusFilter !== 'all' || search) && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {categoryFilter !== 'all' && <Badge className="rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 gap-1 pr-1">{getCategoryIcon(categoryFilter)} {categoryFilter} <button onClick={() => setCategoryFilter('all')} className="ml-1 h-5 w-5 rounded-full bg-white/20 grid place-items-center"><X className="h-3 w-3" /></button></Badge>}
               {severityFilter !== 'all' && <Badge className="rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 capitalize gap-1 pr-1">{severityFilter} <button onClick={() => setSeverityFilter('all')} className="ml-1 h-5 w-5 rounded-full bg-white/20 grid place-items-center"><X className="h-3 w-3" /></button></Badge>}
+              {statusFilter !== 'all' && <Badge className="rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 capitalize gap-1 pr-1">{statusFilter} <button onClick={() => setStatusFilter('all')} className="ml-1 h-5 w-5 rounded-full bg-white/20 grid place-items-center"><X className="h-3 w-3" /></button></Badge>}
               {search && <Badge variant="outline" className="rounded-full gap-1 pr-1">“{search}” <button onClick={() => setSearch('')} className="ml-1 h-5 w-5 rounded-full bg-slate-100 dark:bg-white/10 grid place-items-center"><X className="h-3 w-3" /></button></Badge>}
               <span className="text-xs text-slate-400 self-center ml-1">{filtered.length} matches</span>
             </div>
@@ -305,19 +341,30 @@ export default function ChallengeMapPage() {
                 )}
 
                 <div className="absolute top-3 left-3 z-[500] flex flex-col gap-1.5 pointer-events-auto">
-                  <div className="rounded-xl bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 shadow-md p-1 flex flex-col">
-                    <button type="button" onClick={handleZoomIn} className="h-8 w-8 grid place-items-center rounded-lg hover:bg-slate-50 dark:hover:bg-white/10 active:scale-95 transition-transform"><Plus className="h-4 w-4" /></button>
-                    <div className="h-px bg-slate-100 dark:bg-white/10 my-1" />
-                    <button type="button" onClick={handleZoomOut} className="h-8 w-8 grid place-items-center rounded-lg hover:bg-slate-50 dark:hover:bg-white/10 active:scale-95 transition-transform"><Minus className="h-4 w-4" /></button>
+                  <div className="rounded-xl bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/15 shadow-lg p-1 flex flex-col">
+                    <button type="button" onClick={handleZoomIn} className="h-8 w-8 grid place-items-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all"><Plus className="h-4 w-4" /></button>
+                    <div className="h-px bg-slate-200 dark:bg-white/15 my-1" />
+                    <button type="button" onClick={handleZoomOut} className="h-8 w-8 grid place-items-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all"><Minus className="h-4 w-4" /></button>
                   </div>
-                  <button type="button" onClick={handleResetView} title="Reset view" className="h-9 w-9 rounded-xl bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 shadow-md grid place-items-center hover:bg-slate-50 dark:hover:bg-white/10 active:scale-95 transition-transform"><Navigation className="h-4 w-4" /></button>
-                  <button type="button" onClick={handleLocate} title="Locate me" className="h-9 w-9 rounded-xl bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 shadow-md grid place-items-center hover:bg-slate-50 dark:hover:bg-white/10 active:scale-95 transition-transform"><LocateFixed className="h-4 w-4" /></button>
+                  <button type="button" onClick={handleResetView} title="Reset view" className="h-9 w-9 rounded-xl bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/15 shadow-md grid place-items-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all"><Navigation className="h-4 w-4" /></button>
+                  <button type="button" onClick={handleLocate} title="Locate me" className="h-9 w-9 rounded-xl bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/15 shadow-md grid place-items-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all"><LocateFixed className="h-4 w-4" /></button>
                 </div>
 
-                <div className="absolute top-3 right-3 z-10 hidden sm:flex items-center gap-1.5 rounded-full bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 shadow-md px-2 py-1">
-                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 px-1">{filtered.length} shown</span>
-                  <span className="h-4 w-px bg-slate-200 dark:bg-white/10" />
-                  <button onClick={() => { const el = document.documentElement; if (!document.fullscreenElement) el.requestFullscreen?.(); else document.exitFullscreen?.(); }} className="h-7 w-7 grid place-items-center rounded-full hover:bg-slate-50 dark:hover:bg-white/10"><Maximize2 className="h-3.5 w-3.5" /></button>
+                <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-1.5">
+                  <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/15 shadow-lg px-2 py-1">
+                    <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 px-1">{filtered.length} shown</span>
+                    <span className="h-4 w-px bg-slate-200 dark:bg-white/15" />
+                    <button onClick={() => { const el = document.documentElement; if (!document.fullscreenElement) el.requestFullscreen?.(); else document.exitFullscreen?.(); }} className="h-7 w-7 grid place-items-center rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white transition-all"><Maximize2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                  <div className="flex items-center gap-0.5 rounded-full bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/15 shadow-lg p-0.5">
+                    {([['street', 'Map'], ['satellite', 'Sat'], ['dark', 'Dark']] as const).map(([key, label]) => (
+                      <button key={key} onClick={() => setMapStyle(key)} className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all ${mapStyle === key ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/15'}`}>{label}</button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-0.5 rounded-full bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/15 shadow-lg p-0.5">
+                    <button onClick={fitAll} title="Fit all markers" className="h-7 w-7 grid place-items-center rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white transition-all"><Scan className="h-3.5 w-3.5" /></button>
+                    <button onClick={shareLink} title="Copy share link" className="h-7 w-7 grid place-items-center rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white transition-all"><Share2 className="h-3.5 w-3.5" /></button>
+                  </div>
                 </div>
 
                 <div className="absolute bottom-3 left-3 z-10 rounded-2xl bg-white/95 dark:bg-[#0F1420]/95 backdrop-blur border border-slate-200 dark:border-white/10 shadow-lg p-3 hidden sm:block">
