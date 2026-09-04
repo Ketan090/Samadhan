@@ -342,29 +342,29 @@ export default function ChallengeMapPage() {
                 )}
 
                 <div className="absolute top-3 left-3 z-[500] flex flex-col gap-1.5 pointer-events-auto">
-                  <div className="rounded-xl bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 shadow-md p-1 flex flex-col">
-                    <button type="button" onClick={handleZoomIn} className="h-8 w-8 grid place-items-center rounded-lg hover:bg-slate-50 dark:hover:bg-white/10 active:scale-95 transition-transform"><Plus className="h-4 w-4" /></button>
-                    <div className="h-px bg-slate-100 dark:bg-white/10 my-1" />
-                    <button type="button" onClick={handleZoomOut} className="h-8 w-8 grid place-items-center rounded-lg hover:bg-slate-50 dark:hover:bg-white/10 active:scale-95 transition-transform"><Minus className="h-4 w-4" /></button>
+                  <div className="rounded-xl bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/15 shadow-lg p-1 flex flex-col">
+                    <button type="button" onClick={handleZoomIn} className="h-8 w-8 grid place-items-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all"><Plus className="h-4 w-4" /></button>
+                    <div className="h-px bg-slate-200 dark:bg-white/15 my-1" />
+                    <button type="button" onClick={handleZoomOut} className="h-8 w-8 grid place-items-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all"><Minus className="h-4 w-4" /></button>
                   </div>
-                  <button type="button" onClick={handleResetView} title="Reset view" className="h-9 w-9 rounded-xl bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 shadow-md grid place-items-center hover:bg-slate-50 dark:hover:bg-white/10 active:scale-95 transition-transform"><Navigation className="h-4 w-4" /></button>
+                  <button type="button" onClick={handleResetView} title="Reset view" className="h-9 w-9 rounded-xl bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/15 shadow-md grid place-items-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white active:scale-95 transition-all"><Navigation className="h-4 w-4" /></button>
                   <button type="button" onClick={handleLocate} title="Locate me" onMouseEnter={() => setLocateHovered(true)} onMouseLeave={() => setLocateHovered(false)} className="h-9 w-9 rounded-xl bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 shadow-md grid place-items-center hover:bg-slate-50 dark:hover:bg-white/10 active:scale-95 transition-transform">{locateHovered ? <Navigation className="h-4 w-4" /> : <LocateFixed className="h-4 w-4" />}</button>
                 </div>
 
                 <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-1.5">
-                  <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 shadow-md px-2 py-1">
+                  <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/15 shadow-lg px-2 py-1">
                     <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 px-1">{filtered.length} shown</span>
-                    <span className="h-4 w-px bg-slate-200 dark:bg-white/10" />
-                    <button onClick={() => { const el = document.documentElement; if (!document.fullscreenElement) el.requestFullscreen?.(); else document.exitFullscreen?.(); }} className="h-7 w-7 grid place-items-center rounded-full hover:bg-slate-50 dark:hover:bg-white/10"><Maximize2 className="h-3.5 w-3.5" /></button>
+                    <span className="h-4 w-px bg-slate-200 dark:bg-white/15" />
+                    <button onClick={() => { const el = document.documentElement; if (!document.fullscreenElement) el.requestFullscreen?.(); else document.exitFullscreen?.(); }} className="h-7 w-7 grid place-items-center rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white transition-all"><Maximize2 className="h-3.5 w-3.5" /></button>
                   </div>
-                  <div className="flex items-center gap-0.5 rounded-full bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 shadow-md p-0.5">
+                  <div className="flex items-center gap-0.5 rounded-full bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/15 shadow-lg p-0.5">
                     {([['street', 'Map'], ['satellite', 'Sat'], ['dark', 'Dark']] as const).map(([key, label]) => (
-                      <button key={key} onClick={() => setMapStyle(key)} className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors ${mapStyle === key ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'}`}>{label}</button>
+                      <button key={key} onClick={() => setMapStyle(key)} className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all ${mapStyle === key ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/15'}`}>{label}</button>
                     ))}
                   </div>
-                  <div className="flex items-center gap-0.5 rounded-full bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 shadow-md p-0.5">
-                    <button onClick={fitAll} title="Fit all markers" className="h-7 w-7 grid place-items-center rounded-full hover:bg-slate-50 dark:hover:bg-white/10"><Scan className="h-3.5 w-3.5" /></button>
-                    <button onClick={shareLink} title="Copy share link" className="h-7 w-7 grid place-items-center rounded-full hover:bg-slate-50 dark:hover:bg-white/10"><Share2 className="h-3.5 w-3.5" /></button>
+                  <div className="flex items-center gap-0.5 rounded-full bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/15 shadow-lg p-0.5">
+                    <button onClick={fitAll} title="Fit all markers" className="h-7 w-7 grid place-items-center rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white transition-all"><Scan className="h-3.5 w-3.5" /></button>
+                    <button onClick={shareLink} title="Copy share link" className="h-7 w-7 grid place-items-center rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white transition-all"><Share2 className="h-3.5 w-3.5" /></button>
                   </div>
                 </div>
 
