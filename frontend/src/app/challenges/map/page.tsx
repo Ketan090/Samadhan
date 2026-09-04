@@ -125,12 +125,12 @@ export default function ChallengeMapPage() {
         iconSize: [38, 38], iconAnchor: [19, 19]
       });
     }
-    const size = isSelected ? 36 : 28;
+    const size = isSelected ? 40 : 32;
     const border = isSelected ? '3px' : '2.5px';
     const pulse = severity === 'critical' ? `<span style="position:absolute;inset:-6px;border-radius:50%;background:${cfg.color};opacity:0.18;animation: ping 1.6s cubic-bezier(0,0,0.2,1) infinite;"></span>` : '';
     return L.divIcon({
       className: 'custom-marker',
-      html: `<div style="position:relative;width:${size}px;height:${size}px;">${pulse}<div style="position:relative;width:${size}px;height:${size}px;border-radius:50%;background:${cfg.color};border:${border} solid white;box-shadow:0 4px 16px rgba(0,0,0,0.18);display:flex;align-items:center;justify-content:center;">${getCategoryIcon(category)}</div>${isSelected ? `<div style="position:absolute;left:50%;bottom:-6px;transform:translateX(-50%) rotate(45deg);width:10px;height:10px;background:${cfg.color};border-right:2px solid white;border-bottom:2px solid white;"></div>` : ''}</div>`,
+      html: `<div title="${category} • ${severity}" aria-label="${category} challenge" style="position:relative;width:${size}px;height:${size}px;cursor:pointer;">${pulse}<div style="position:relative;width:${size}px;height:${size}px;border-radius:50%;background:${cfg.color};border:${border} solid white;box-shadow:0 4px 16px rgba(0,0,0,0.22), 0 1px 3px rgba(0,0,0,0.14);display:flex;align-items:center;justify-content:center;font-size:${isSelected?15:13}px;">${getCategoryIcon(category)}</div>${isSelected ? `<div style="position:absolute;left:50%;bottom:-6px;transform:translateX(-50%) rotate(45deg);width:10px;height:10px;background:${cfg.color};border-right:2px solid white;border-bottom:2px solid white;"></div>` : ''}</div>`,
       iconSize: [size, size], iconAnchor: [size/2, size/2],
     });
   };
@@ -211,7 +211,7 @@ export default function ChallengeMapPage() {
             <div className="rounded-[20px] overflow-hidden border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] shadow-sm relative">
               <div className="h-[420px] sm:h-[560px] xl:h-[640px] relative bg-slate-100 dark:bg-[#0a0f1f]">
                 {L ? (
-                  <MapContainer center={[22.5,79.5]} zoom={5} style={{height:'100%',width:'100%',background: mapStyle==='dark' ? '#0f172a' : '#eef2f7'}} zoomControl={false} attributionControl={false} preferCanvas>
+                  <MapContainer center={[22.5,79.5]} zoom={5} style={{height:'100%',width:'100%',background: mapStyle==='dark' ? '#0f172a' : '#eef2f7'}} zoomControl={false} attributionControl={false} preferCanvas={false}>
                     {mapStyle==='street' && <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={19} />}
                     {mapStyle==='satellite' && <TileLayer attribution='&copy; Esri' url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" maxZoom={19} />}
                     {mapStyle==='dark' && <TileLayer attribution='&copy; Esri' url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}" maxZoom={16} />}
