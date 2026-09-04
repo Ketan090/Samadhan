@@ -24,8 +24,17 @@ export default function AdminDashboard() {
       const payload:any={ provider: aiForm.provider, apiBase: aiForm.apiBase, minimumMatchScore: Number(aiForm.minimumMatchScore) };
       const keys:any={}; if(aiForm.openaiKey) keys.openai=aiForm.openaiKey; if(aiForm.geminiKey) keys.gemini=aiForm.geminiKey; if(Object.keys(keys).length) payload.apiKeys=keys;
       await aiMatchingAPI.updateConfig(payload);
-      setAiMsg('Saved — provider now ' + aiForm.provider + (aiForm.apiBase ? ` via ${aiForm.apiBase}` : ''));
-    } catch(e:any){ setAiMsg(e.response?.data?.message || 'Save failed — admin only'); }
+      if(typeof window !== 'undefined'){
+        if(aiForm.apiBase && (aiForm.provider==='lmstudio' || aiForm.provider==='local')) localStorage.setItem('lmstudio_url', aiForm.apiBase);
+        if(aiForm.apiBase) localStorage.setItem('samadhanhub_api_base', aiForm.apiBase);
+      }
+      setAiMsg('Saved — provider now ' + aiForm.provider + (aiForm.apiBase ? ` via ${aiForm.apiBase}` : '') + ' ✓ Also stored locally for direct browser connection');
+    } catch(e:any){
+      if(e.response?.status===403){
+        setAiMsg('Admin only (first config allowed) — trying local fallback...');
+        try{ if(typeof window !== 'undefined' && aiForm.apiBase) { localStorage.setItem('lmstudio_url', aiForm.apiBase); setAiMsg('Saved locally (browser) — your device will use LM Studio directly. For all visitors, promote to admin or use ngrok URL.'); } } catch{}
+      } else setAiMsg(e.response?.data?.message || 'Save failed');
+    }
     finally{ setAiSaving(false); }
   };
   return (
