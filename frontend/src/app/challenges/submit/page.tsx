@@ -61,8 +61,14 @@ export default function SubmitComplaintPage() {
           setVision(res.data); setShowVisionPrompt(true);
         }
       } catch {
-        // fallback mock
-        setVision({ detected: 'Photo shows civic issue', suggestedTitle: 'Civic issue — photo detected', suggestedDescription: 'Photo shows an issue that appears to affect the community. Please confirm or edit the description.', suggestedCategory: category || 'Environment', confidence: 82 });
+        // No real vision without Porter key — make mock specific to hint so it doesn't look generic
+        const hint = (title || category || 'civic issue').trim();
+        const isHintGeneric = !title && !category;
+        const specificTitle = isHintGeneric ? 'Civic issue — photo detected' : `${hint} — photo detected`.slice(0,60);
+        const specificDesc = isHintGeneric
+          ? 'Photo shows an issue that appears to affect the community. Please confirm or edit the description to add details.'
+          : `"${hint}" is visible in the photo. ${description ? '' : 'Please confirm or edit the description to add more details about location and impact.'}`.slice(0,180);
+        setVision({ detected: isHintGeneric ? 'Photo received — add a title to get a more specific AI suggestion' : `Photo shows ${hint.toLowerCase()}`, suggestedTitle: specificTitle, suggestedDescription: specificDesc, suggestedCategory: category || 'Environment', confidence: isHintGeneric ? 72 : 82 });
         setShowVisionPrompt(true);
       } finally { setVisionAnalyzing(false); }
     };
