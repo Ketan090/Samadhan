@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import Link from 'next/link';
-import { Globe, Twitter, Linkedin, Mail, MapPin, ArrowUpRight, Github, Sparkles, Heart } from 'lucide-react';
+import { Globe, Twitter, Linkedin, Mail, MapPin, ArrowUpRight, Github, Sparkles } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -50,14 +50,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-8 rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 text-white p-[1px]">
-          <div className="rounded-[15px] bg-slate-900 dark:bg-[#0F1420] px-4 sm:px-5 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
-            <p className="text-xs sm:text-sm font-medium flex flex-wrap items-center justify-center sm:justify-start gap-1.5"><Heart className="h-3.5 w-3.5 text-red-400 fill-red-400" /> Made by <span className="font-bold text-white">Ketan Mahajan</span> and his Team <span className="inline-flex items-center rounded-full bg-white text-slate-900 px-2 py-0.5 text-xs font-bold">BharatBytes</span></p>
-            <Link href="/about" className="inline-flex items-center gap-1 text-xs font-semibold text-white/80 hover:text-white whitespace-nowrap">Meet the team <ArrowUpRight className="h-3 w-3" /></Link>
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200/60 dark:border-white/5 px-4 sm:px-5 py-3 sm:py-4 text-center sm:text-left">
+        <div className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200/60 dark:border-white/5 px-5 py-4">
           <p className="text-xs text-slate-500 dark:text-slate-400">© 2026 SamadhanHub · Built for India, with communities.</p>
           <div className="flex items-center gap-3 text-xs">
             <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2.5 py-1 font-medium">Demo data — not affiliated</span>
