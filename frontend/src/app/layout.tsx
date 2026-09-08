@@ -5,8 +5,9 @@ import ClientProviders from '@/components/ClientProviders'
 
 const jakarta = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-jakarta', display: 'swap', preload: true, fallback: ['system-ui','sans-serif'], adjustFontFallback: true })
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://samadhanhub.vercel.app';
 export const metadata: Metadata = {
-  metadataBase: new URL('https://samadhan-for-us.vercel.app'),
+  metadataBase: new URL(siteUrl),
   title: { default: 'SamadhanHub — Real Problems. Collective Intelligence.', template: '%s · SamadhanHub' },
   description: 'A national platform to crowdsource societal challenges and facilitate collaborative problem solving through universities and industry partnerships across India.',
   keywords: ['samadhan','challenges','india','university','industry','government','collaboration','social impact'],
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
   robots: { index: true, follow: true },
   icons: { icon: '/favicon.ico' },
-  openGraph: { title: 'SamadhanHub — Real Problems. Collective Intelligence.', description: 'Crowdsource challenges. Build solutions. Measure impact.', type: 'website', url: 'https://samadhan-for-us.vercel.app', siteName: 'SamadhanHub', locale: 'en_IN' },
+  openGraph: { title: 'SamadhanHub — Real Problems. Collective Intelligence.', description: 'Crowdsource challenges. Build solutions. Measure impact.', type: 'website', url: siteUrl, siteName: 'SamadhanHub', locale: 'en_IN' },
   twitter: { card: 'summary_large_image', title: 'SamadhanHub', description: 'Crowdsource challenges. Build solutions. Measure impact.' },
 }
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, maximumScale: 5, themeColor: [{ media: '(prefers-color-scheme: light)', color: '#ffffff' }, { media: '(prefers-color-scheme: dark)', color: '#070A12' }] }

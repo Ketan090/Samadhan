@@ -13,7 +13,13 @@ const navLinks = [
   { href: '/challenges/submit', label: 'Submit', icon: Map },
   { href: '/track', label: 'Track', icon: Clock },
 ];
-const portalLinks: { href: string; label: string }[] = [];
+const portalLinks = [
+  { href: '/university', label: 'University' },
+  { href: '/industry', label: 'Industry' },
+  { href: '/government', label: 'Government' },
+  { href: '/collaborate', label: 'Collaborate' },
+  { href: '/impact', label: 'Impact' },
+];
 
 export default function Navbar() {
   const { user, logout } = useAuth();
