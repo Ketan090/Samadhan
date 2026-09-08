@@ -119,13 +119,19 @@ export default function SubmitComplaintPage() {
       try { const ex = JSON.parse(localStorage.getItem('samadhanhub_submitted')||'[]'); localStorage.setItem('samadhanhub_submitted', JSON.stringify([saved, ...ex].slice(0,20))); localStorage.setItem('samadhanhub_last_ref', ref); } catch {}
     }
     if (saved._id) setReference('#' + saved._id.slice(-6).toUpperCase().replace('CHL-','SAM-'));
-    // Seamless AI processing — no user config
-    setAiStep(0);
-    setTimeout(()=> setAiStep(1), 600);
-    setTimeout(()=> { setAiStep(2); setAiChecks({ relevant: true, usable: true, manipulation: true }); }, 1300);
-    setTimeout(()=> setAiStep(3), 1900);
-    setTimeout(()=> { setAiDone(true); setSubmitting(false); setSubmitted(true); }, 2300);
-    setTimeout(()=> router.push('/track'), 5500);
+    // Follow poster workflow strictly — no skipping: AI Analyses (4) → University → Government → Industry → Progress → Satisfied
+    setAiStep(0); setAiChecks({ relevant: false, usable: false, manipulation: false });
+    setTimeout(()=> setAiStep(1), 550);
+    setTimeout(()=> { setAiStep(2); setAiChecks({ relevant: true, usable: true, manipulation: false }); }, 1150);
+    setTimeout(()=> { setAiStep(3); setAiChecks({ relevant: true, usable: true, manipulation: true }); }, 1750);
+    setTimeout(()=> { setAiDone(true); setSubmitting(false); setSubmitted(true);
+      // Advance workflowStage in backend so University portal sees it, then go to University portal (not Track) per poster
+      try { challengesAPI.update(saved._id, { workflowStage: 'ai-analyses' }); } catch {}
+      setTimeout(async()=>{
+        try { await challengesAPI.update(saved._id, { workflowStage: 'sent-to-university' }); } catch {}
+        // Do NOT auto-skip to /track — show explicit next-step buttons per workflow
+      }, 800);
+    }, 2350);
     // Background: store even if AI fails — already saved above
     try { const ex = JSON.parse(localStorage.getItem('samadhanhub_submitted')||'[]'); if(!ex.find((x:any)=>x._id===saved._id)) localStorage.setItem('samadhanhub_submitted', JSON.stringify([saved, ...ex].slice(0,20))); } catch{}
   };
@@ -165,11 +171,16 @@ export default function SubmitComplaintPage() {
                 </div>
                 <button className="mt-3 text-xs text-violet-600 dark:text-violet-400 underline" onClick={()=> alert('Evidence relevance: high\nAuthenticity: no manipulation detected\nQuality: good\nThis is a demo screening — human review will confirm.')}>View verification details</button>
               </div>
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                <Link href="/track"><Button className="w-full rounded-full h-11 bg-slate-900 dark:bg-white dark:text-slate-900">Track Complaint</Button></Link>
-                <Link href="/"><Button variant="outline" className="w-full rounded-full h-11">Back to Home</Button></Link>
+              <div className="mt-4 rounded-2xl border border-violet-200 dark:border-violet-900/30 bg-violet-50/50 dark:bg-violet-950/10 p-3 flex items-center gap-2 text-left">
+                <div className="h-8 w-8 rounded-xl bg-violet-600 text-white grid place-items-center shrink-0"><span className="text-[11px] font-bold">✓</span></div>
+                <div className="min-w-0 flex-1"><div className="text-xs font-bold">Challenge sent to University Portal</div><div className="text-[11px] text-slate-500">Per poster flow — university will propose a solution next.</div></div>
               </div>
-              <p className="text-[11px] text-slate-400 mt-3">What happens next? We'll review and update the status. No further action needed.</p>
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <Link href="/university"><Button className="w-full rounded-full h-10 bg-teal-700 hover:bg-teal-800 text-white text-xs">View University Portal</Button></Link>
+                <Link href="/track"><Button variant="outline" className="w-full rounded-full h-10 text-xs">Track Status</Button></Link>
+                <Link href="/"><Button variant="outline" className="w-full rounded-full h-10 text-xs">Home</Button></Link>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-3">Next: University proposes → Government approves → Industry joins → Progress photos → Citizen satisfied.</p>
             </div>
           )}
         </div>
@@ -177,26 +188,51 @@ export default function SubmitComplaintPage() {
     );
   }
 
-  const workflowSteps = [
-    { key: 'welcome', label: 'Welcome', icon: 'H', done: true },
-    { key: 'report', label: 'Report', icon: '≡', active: true },
-    { key: 'login', label: 'Login', icon: '◐' },
-    { key: 'ai', label: 'AI Scan', icon: '◎' },
-    { key: 'university', label: 'University', icon: '▭' },
-    { key: 'review', label: 'Review', icon: '⧉' },
-    { key: 'complete', label: 'Complete', icon: '⊕' },
-  ];
+  const workflowSteps = submitted
+    ? aiDone
+      ? [
+          { key: 'welcome', label: 'Welcome', icon: 'H', done: true },
+          { key: 'report', label: 'Report', icon: '≡', done: true },
+          { key: 'login', label: 'Login', icon: '◐', done: true },
+          { key: 'ai', label: 'AI Scan', icon: '◎', done: true },
+          { key: 'university', label: 'University', icon: '▭', active: true },
+          { key: 'review', label: 'Review', icon: '⧉' },
+          { key: 'complete', label: 'Complete', icon: '⊕' },
+        ]
+      : [
+          { key: 'welcome', label: 'Welcome', icon: 'H', done: true },
+          { key: 'report', label: 'Report', icon: '≡', done: true },
+          { key: 'login', label: 'Login', icon: '◐', done: true },
+          { key: 'ai', label: 'AI Scan', icon: '◎', active: true },
+          { key: 'university', label: 'University', icon: '▭' },
+          { key: 'review', label: 'Review', icon: '⧉' },
+          { key: 'complete', label: 'Complete', icon: '⊕' },
+        ]
+    : [
+        { key: 'welcome', label: 'Welcome', icon: 'H', done: true },
+        { key: 'report', label: 'Report', icon: '≡', active: true },
+        { key: 'login', label: 'Login', icon: '◐' },
+        { key: 'ai', label: 'AI Scan', icon: '◎' },
+        { key: 'university', label: 'University', icon: '▭' },
+        { key: 'review', label: 'Review', icon: '⧉' },
+        { key: 'complete', label: 'Complete', icon: '⊕' },
+      ];
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#070A12]">
       <div className="container max-w-3xl py-4 sm:py-6">
         <div className="mb-6 overflow-x-auto -mx-4 px-4">
           <div className="flex items-center gap-1 min-w-[640px]">
-            {workflowSteps.map((s, i) => (
-              <React.Fragment key={s.key}>
-                <div className={`h-1.5 flex-1 rounded-full ${i <= 1 ? 'bg-teal-700 dark:bg-teal-600' : 'bg-slate-200 dark:bg-white/10'}`} />
-              </React.Fragment>
-            ))}
+            {workflowSteps.map((s, i) => {
+              const activeIdx = workflowSteps.findIndex(x => (x as any).active);
+              const isDone = !!(s as any).done || i < activeIdx;
+              const isActive = !!(s as any).active;
+              return (
+                <React.Fragment key={s.key}>
+                  <div className={`h-1.5 flex-1 rounded-full ${isDone || isActive ? 'bg-teal-700 dark:bg-teal-600' : 'bg-slate-200 dark:bg-white/10'}`} />
+                </React.Fragment>
+              );
+            })}
           </div>
           <div className="flex justify-between mt-2 min-w-[640px]">
             {workflowSteps.map(s => (
