@@ -16,8 +16,19 @@ import {
 export default function WorkspacePage() {
   const params = useParams();
   const [message, setMessage] = useState('');
+  const [liveData, setLiveData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  React.useEffect(()=>{
+    (async()=>{
+      try{
+        const { collaborationsAPI } = await import('@/lib/api');
+        const res = await collaborationsAPI.getById(params.id as string);
+        setLiveData(res.data.collaboration);
+      } catch{} finally{ setLoading(false); }
+    })();
+  },[params.id]);
 
-  const workspace = {
+  const staticWorkspace = {
     challenge: 'Smart Waste Collection for Urban Wards',
     team: 'EcoTech Solutions',
     university: 'IIT Bombay',
@@ -42,13 +53,14 @@ export default function WorkspacePage() {
       { user: 'Aditya Mehta', text: 'Cloud platform is 80% ready. Should be deployable by end of this week.', time: '5 hours ago' },
       { user: 'Vikram Patel', text: 'Great progress! I have connected with the municipal corporation for field testing access.', time: '1 day ago' },
     ],
-    milestones: [
+     milestones: [
       { title: 'Prototype Complete', date: '2024-04-15', status: 'completed' },
       { title: 'Cloud Platform Deployed', date: '2024-05-01', status: 'in-progress' },
       { title: 'Pilot Launch (5 wards)', date: '2024-06-15', status: 'pending' },
       { title: 'Full Deployment', date: '2024-09-01', status: 'pending' },
     ]
   };
+  const workspace = liveData ? { ...staticWorkspace, ...liveData, challenge: (liveData as any).challenge?.title || (liveData as any).challenge || staticWorkspace.challenge, team: (liveData as any).team?.name || (liveData as any).team || staticWorkspace.team } : staticWorkspace;
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#070A12]">
@@ -116,10 +128,10 @@ export default function WorkspacePage() {
                   <h3 className="font-semibold text-sm text-gray-900 dark:text-white">Team Discussion</h3>
                 </div>
                 <div className="p-4 space-y-4 max-h-[400px] overflow-y-auto">
-                  {workspace.messages.map((msg, i) => (
+                  {workspace.messages.map((msg: any, i: number) => (
                     <div key={i} className="flex gap-3">
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary flex-shrink-0">
-                        {msg.user.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                        {msg.user.split(' ').map((n: any) => n[0]).join('').slice(0, 2)}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
@@ -141,7 +153,7 @@ export default function WorkspacePage() {
 
           <TabsContent value="team">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {workspace.members.map(m => (
+              {workspace.members.map((m: any) => (
                 <Card key={m.name} className="border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420]">
                   <CardContent className="p-4 flex items-center gap-3">
                     <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">{m.avatar}</div>
@@ -158,7 +170,7 @@ export default function WorkspacePage() {
           <TabsContent value="tasks">
             <Card className="border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420]">
               <CardContent className="p-4 space-y-3">
-                {workspace.tasks.map((task, i) => (
+                {workspace.tasks.map((task: any, i: number) => (
                   <div key={i} className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/[0.04]">
                     <div className={`h-5 w-5 rounded border-2 flex items-center justify-center ${task.status === 'done' ? 'bg-green-500 border-green-500' : 'border-slate-300 dark:border-white/20'}`}>
                       {task.status === 'done' && <span className="text-white text-xs">✓</span>}
@@ -178,7 +190,7 @@ export default function WorkspacePage() {
             <Card className="border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420]">
               <CardContent className="p-6">
                 <div className="space-y-4">
-                  {workspace.milestones.map((ms, i) => (
+                  {workspace.milestones.map((ms: any, i: number) => (
                     <div key={i} className="flex items-center gap-4">
                       <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold ${ms.status === 'completed' ? 'bg-green-500 text-white' : ms.status === 'in-progress' ? 'bg-blue-500 text-white' : 'bg-slate-100 dark:bg-white/10 text-gray-500 dark:text-slate-400'}`}>
                         {ms.status === 'completed' ? '✓' : i + 1}

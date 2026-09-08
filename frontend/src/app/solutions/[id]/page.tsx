@@ -13,6 +13,9 @@ export default function SolutionDetailPage() {
   const [solution, setSolution] = useState<any>(null);
   const [evaluations, setEvaluations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showEval, setShowEval] = useState(false);
+  const [evalForm, setEvalForm] = useState({ impact: 8, feasibility: 8, scalability: 8, innovation: 7, costEffectiveness: 7, recommendation: 'approve', comments: '' });
+  const [evalSubmitting, setEvalSubmitting] = useState(false);
 
   useEffect(() => { const load=async()=>{ try{ const s=await solutionsAPI.getById(params.id as string); setSolution(s.data.solution); const e=await evaluationsAPI.getBySolution(params.id as string); setEvaluations(e.data.evaluations);} catch{ setSolution({ _id:params.id, title:'SmartBin: IoT-Enabled Waste Collection Optimization System', challenge:{title:'Smart Waste Collection for Urban Wards', category:'Environment', location:{city:'Ranchi', state:'Jharkhand'}}, submittedBy:{name:'Prof. Amit Verma'}, team:{name:'EcoTech Solutions'}, problemAddressed:'Low waste collection efficiency of 40% in Ranchi urban wards affecting 25,000 residents', proposedApproach:'Deploy IoT sensors in waste bins across all wards. Use AI to optimize collection routes in real-time. Provide a mobile app for citizens to report issues and track collection. Dashboard for ward administrators to monitor operations.', technology:['IoT Sensors','Machine Learning','Mobile App','Cloud Platform','GPS Tracking'], architecture:'Three-tier architecture: IoT layer (sensors + gateways), Cloud layer (data processing + AI), Application layer (mobile + web dashboards)', expectedImpact:'Increase waste collection efficiency from 40% to 85%. Reduce fuel costs by 30%. Improve citizen satisfaction by 60%.', estimatedCost:2500000, implementationTimeline:'6 months pilot in 5 wards, 12 months full deployment', scalability:'Easily scalable to other cities. Modular design allows adding new sensor types and features.', status:'under-review', scorecard:{ impact:8, feasibility:8, scalability:9, innovation:7, costEffectiveness:7, totalScore:7.85 }, createdAt:'2024-03-15'}); setEvaluations([{ _id:'e1', evaluator:{name:'Meena Joshi', role:'expert'}, scores:{impact:8, feasibility:8, scalability:9, innovation:7, costEffectiveness:7}, weightedScore:7.85, recommendation:'approve', comments:'Strong solution with practical IoT implementation and clear ROI.', strengths:['Uses existing infrastructure','Modular design','Clear impact metrics'], weaknesses:['Requires maintenance training'], recommendations:['Start with pilot in 2 wards']}]) } setLoading(false); }; load(); }, [params.id]);
 
@@ -60,8 +63,32 @@ export default function SolutionDetailPage() {
             <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] overflow-hidden">
               <div className="p-5 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
                 <h2 className="font-semibold flex items-center gap-2">Expert Evaluations <span className="text-slate-400 font-normal">· {evaluations.length}</span></h2>
-                <Badge variant="outline" className="rounded-full text-xs border-slate-200 dark:border-white/10 dark:text-slate-300">Weighted score</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="rounded-full text-xs border-slate-200 dark:border-white/10 dark:text-slate-300">Weighted score</Badge>
+                  <Button size="sm" onClick={()=>setShowEval(!showEval)} className="rounded-full h-7 text-xs bg-slate-900 dark:bg-white dark:text-slate-900">+ Evaluate</Button>
+                </div>
               </div>
+              {showEval && (
+                <div className="p-4 bg-slate-50 dark:bg-white/[0.03] border-b border-slate-100 dark:border-white/10 space-y-3">
+                  <div className="grid grid-cols-5 gap-2">
+                    {(['impact','feasibility','scalability','innovation','costEffectiveness'] as const).map(k=>(
+                      <div key={k}><label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{k==='costEffectiveness'?'Cost':k}</label><input type="number" min={0} max={10} value={(evalForm as any)[k]} onChange={e=>setEvalForm({...evalForm, [k]: Math.min(10,Math.max(0, parseInt(e.target.value)||0))})} className="mt-1 w-full h-9 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] text-center text-sm" /></div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className="text-xs font-semibold">Recommendation</label><select value={evalForm.recommendation} onChange={e=>setEvalForm({...evalForm, recommendation:e.target.value})} className="mt-1 w-full h-9 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] text-sm px-3"><option value="approve">Approve</option><option value="request-changes">Request Changes</option><option value="reject">Reject</option></select></div>
+                    <div><label className="text-xs font-semibold">Comments</label><input value={evalForm.comments} onChange={e=>setEvalForm({...evalForm, comments:e.target.value})} placeholder="Strengths, concerns..." className="mt-1 w-full h-9 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] text-sm px-3" /></div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={async()=>{
+                      if(!evalForm.comments.trim()){ alert('Add a comment'); return; }
+                      setEvalSubmitting(true);
+                      try{ await evaluationsAPI.create({ solution: params.id as string, scores: { impact:evalForm.impact, feasibility:evalForm.feasibility, scalability:evalForm.scalability, innovation:evalForm.innovation, costEffectiveness:evalForm.costEffectiveness }, recommendation: evalForm.recommendation, comments: evalForm.comments }); const e=await evaluationsAPI.getBySolution(params.id as string); setEvaluations(e.data.evaluations); setShowEval(false); } catch(err:any){ alert(err?.response?.data?.message||'Failed to submit evaluation'); } finally{ setEvalSubmitting(false); }
+                    }} disabled={evalSubmitting} className="rounded-full h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white">{evalSubmitting ? 'Submitting...' : 'Submit Evaluation'}</Button>
+                    <Button variant="outline" onClick={()=>setShowEval(false)} className="rounded-full h-8 text-xs">Cancel</Button>
+                  </div>
+                </div>
+              )}
               <div className="p-4">
                 {evaluations.length===0 ? <div className="text-center py-8"><div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-white/5 grid place-items-center mx-auto"><Star className="h-5 w-5 text-slate-400" /></div><p className="text-sm text-slate-500 mt-3">No evaluations yet.</p></div> : (
                   <div className="space-y-3">

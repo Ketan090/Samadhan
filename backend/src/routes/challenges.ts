@@ -1,5 +1,7 @@
 import { Router, Response } from 'express';
 import Challenge from '../models/Challenge';
+import AuditLog from '../models/AuditLog';
+import Notification from '../models/Notification';
 import { protect, authorize, AuthRequest } from '../middleware/auth';
 import { validateChallenge, handleValidationErrors } from '../middleware/validation';
 import AIService from '../services/aiService';
@@ -226,14 +228,20 @@ router.patch('/:id', protect, async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
-    // Government/admin can update verification status
+    // Government/admin can update verification status + audit + notify
     if (isGovOrAdmin && req.body.verificationStatus) {
+      const old = challenge.verificationStatus;
       challenge.verificationStatus = req.body.verificationStatus;
       challenge.verifiedBy = req.user!._id;
       challenge.verifiedAt = new Date();
       if (req.body.verificationStatus === 'verified') {
         challenge.status = 'verified';
       }
+      try {
+        await AuditLog.create({ user: req.user!._id, action: `challenge:${req.body.verificationStatus}`, entity: 'Challenge', entityId: challenge._id, details: `${old} → ${req.body.verificationStatus}`, ipAddress: req.ip, userAgent: req.headers['user-agent'] });
+        await Notification.create({ recipient: challenge.submittedBy, sender: req.user!._id, type: 'status_change', title: `Your report ${req.body.verificationStatus}`, message: `Problem "${challenge.title}" is now ${req.body.verificationStatus}`, relatedId: challenge._id, relatedModel: 'Challenge' });
+        const io = req.app.get('io'); if (io) io.to(`challenge-${challenge._id}`).emit('status-updated', { challengeId: challenge._id, verificationStatus: challenge.verificationStatus, status: challenge.status });
+      } catch {}
     }
 
     const allowedUpdates = ['title', 'description', 'category', 'location', 'affectedPopulation', 'urgency', 'severity', 'currentConsequences', 'existingAttempts', 'desiredOutcome', 'constraints', 'availableResources', 'suggestedExpertise', 'status', 'tags'];
