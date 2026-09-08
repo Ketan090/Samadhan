@@ -244,11 +244,15 @@ router.patch('/:id', protect, async (req: AuthRequest, res: Response): Promise<v
       } catch {}
     }
 
-    const allowedUpdates = ['title', 'description', 'category', 'location', 'affectedPopulation', 'urgency', 'severity', 'currentConsequences', 'existingAttempts', 'desiredOutcome', 'constraints', 'availableResources', 'suggestedExpertise', 'status', 'tags'];
+    const allowedUpdates = ['title', 'description', 'category', 'location', 'affectedPopulation', 'urgency', 'severity', 'currentConsequences', 'existingAttempts', 'desiredOutcome', 'constraints', 'availableResources', 'suggestedExpertise', 'status', 'workflowStage', 'tags'];
     for (const field of allowedUpdates) {
       if (req.body[field] !== undefined) {
         (challenge as any)[field] = req.body[field];
       }
+    }
+    // Auto-advance workflowStage based on status if not explicitly set
+    if (!req.body.workflowStage && challenge.workflowStage === 'registration' && challenge.verificationStatus === 'verified') {
+      (challenge as any).workflowStage = 'ai-analyses';
     }
 
     await challenge.save();

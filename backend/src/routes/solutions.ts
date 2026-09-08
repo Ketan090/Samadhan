@@ -61,9 +61,10 @@ router.post('/', protect, validateSolution, handleValidationErrors, async (req: 
       status: 'submitted'
     });
 
-    // Update challenge stats
+    // Update challenge stats + advance workflow to university-proposed (poster flow)
     await Challenge.findByIdAndUpdate(req.body.challenge, {
-      $inc: { numberOfSolutions: 1 }
+      $inc: { numberOfSolutions: 1 },
+      $set: { workflowStage: 'university-proposed', status: 'in-progress' }
     });
 
     res.status(201).json({ success: true, solution });
@@ -81,9 +82,14 @@ router.patch('/:id', protect, async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
-    // Government/admin can update status
+    // Government/admin can update status + advance workflow per poster flow
     if (['government', 'admin'].includes(req.user!.role) && req.body.status) {
       solution.status = req.body.status;
+      if (req.body.status === 'approved') {
+        await Challenge.findByIdAndUpdate(solution.challenge, { $set: { workflowStage: 'government-approved', status: 'verified' } });
+      } else if (req.body.status === 'implemented') {
+        await Challenge.findByIdAndUpdate(solution.challenge, { $set: { workflowStage: 'citizen-satisfied', status: 'implemented' } });
+      }
     }
 
     // Update other fields

@@ -22,8 +22,9 @@ export interface IChallenge extends Document {
   constraints?: string;
   availableResources?: string;
   suggestedExpertise: string[];
-  status: 'draft' | 'submitted' | 'verified' | 'open' | 'in-progress' | 'solved' | 'implemented' | 'closed';
+  status: 'draft' | 'submitted' | 'ai-processing' | 'sent-to-university' | 'university-proposed' | 'government-approved' | 'industry-collaborating' | 'progress-photos' | 'citizen-satisfied' | 'verified' | 'open' | 'in-progress' | 'solved' | 'implemented' | 'closed';
   verificationStatus: 'pending' | 'verified' | 'rejected';
+  workflowStage: 'landing' | 'registration' | 'login' | 'ai-analyses' | 'sent-to-university' | 'university-proposed' | 'government-approved' | 'industry-collaborating' | 'progress-photos' | 'citizen-satisfied';
   verifiedBy?: mongoose.Types.ObjectId;
   verifiedAt?: Date;
   // AI Analysis
@@ -75,8 +76,9 @@ const challengeSchema = new Schema<IChallenge>({
   constraints: String,
   availableResources: String,
   suggestedExpertise: [String],
-  status: { type: String, enum: ['draft', 'submitted', 'verified', 'open', 'in-progress', 'solved', 'implemented', 'closed'], default: 'draft' },
+  status: { type: String, enum: ['draft', 'submitted', 'ai-processing', 'sent-to-university', 'university-proposed', 'government-approved', 'industry-collaborating', 'progress-photos', 'citizen-satisfied', 'verified', 'open', 'in-progress', 'solved', 'implemented', 'closed'], default: 'draft' },
   verificationStatus: { type: String, enum: ['pending', 'verified', 'rejected'], default: 'pending' },
+  workflowStage: { type: String, enum: ['landing', 'registration', 'login', 'ai-analyses', 'sent-to-university', 'university-proposed', 'government-approved', 'industry-collaborating', 'progress-photos', 'citizen-satisfied'], default: 'registration' },
   verifiedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   verifiedAt: Date,
   aiAnalysis: {

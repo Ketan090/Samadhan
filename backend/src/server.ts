@@ -16,6 +16,7 @@ import evaluationRoutes from './routes/evaluations';
 import analyticsRoutes from './routes/analytics';
 import aiRoutes from './routes/ai';
 import aiMatchingRoutes from './routes/aiMatching';
+import visionRoutes from './routes/vision';
 
 dotenv.config();
 
@@ -58,6 +59,8 @@ app.use('/api/evaluations', evaluationRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/ai-matching', aiMatchingRoutes);
+app.use('/api/porter', visionRoutes);
+app.use('/api/vision', visionRoutes);
 
 // Health check
 app.get('/api/health', (_, res) => {

@@ -42,7 +42,7 @@ router.get('/:id', protect, async (req: AuthRequest, res: Response): Promise<voi
   }
 });
 
-// POST /api/collaborations
+// POST /api/collaborations — industry joins per poster flow
 router.post('/', protect, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const collab = await Collaboration.create({
@@ -50,6 +50,13 @@ router.post('/', protect, async (req: AuthRequest, res: Response): Promise<void>
       initiator: req.user!._id,
       initiatorOrganization: req.user!.organization
     });
+    // Advance challenge workflow to industry-collaborating when industry/gov/university collaborates
+    if (req.body.challenge) {
+      try {
+        const Challenge = (await import('../models/Challenge')).default;
+        await Challenge.findByIdAndUpdate(req.body.challenge, { $set: { workflowStage: 'industry-collaborating' } });
+      } catch {}
+    }
     res.status(201).json({ success: true, collaboration: collab });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Failed to create collaboration', error: error.message });
