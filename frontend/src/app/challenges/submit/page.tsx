@@ -17,6 +17,25 @@ export default function SubmitWithWorkflowPage(){
   const router = useRouter();
   const { user } = useAuth();
   const [step, setStep] = useState(1);
+  const [draftRestored, setDraftRestored] = useState(false);
+  // Restore draft saved before login — per poster: form filled before login, then continue after login by fetching copied part
+  React.useEffect(()=>{
+    try{
+      const raw = localStorage.getItem('samadhanhub_draft_challenge');
+      if(raw && user){
+        const d = JSON.parse(raw);
+        if(d.title) setTitle(d.title);
+        if(d.description) setDescription(d.description);
+        if(d.category) setCategory(d.category);
+        if(d.city) setCity(d.city);
+        if(d.stateName) setStateName(d.stateName);
+        if(d.severity) setSeverity(d.severity);
+        if(d.photo) { setPhoto(d.photo); if(d.photoFileName) setPhotoFile(null); }
+        setDraftRestored(true);
+        setTimeout(()=>setDraftRestored(false), 4000);
+      }
+    } catch{}
+  },[user]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
@@ -91,6 +110,7 @@ export default function SubmitWithWorkflowPage(){
   const handleSubmit=async()=>{
     if(!isStep1Valid || !isPhotoValid) return;
     if(!user){
+      try{ localStorage.setItem('samadhanhub_draft_challenge', JSON.stringify({ title, description, category, city, stateName, severity, photo, draftAt: new Date().toISOString() })); } catch{}
       router.push('/auth/login?redirect=/challenges/submit');
       return;
     }
@@ -116,6 +136,7 @@ export default function SubmitWithWorkflowPage(){
       try{ const ex=JSON.parse(localStorage.getItem('samadhanhub_submitted')||'[]'); localStorage.setItem('samadhanhub_submitted',JSON.stringify([saved,...ex].slice(0,20))); }catch{}
     }
     setAiStep(0); setSubmitted(true);
+    try{ localStorage.removeItem('samadhanhub_draft_challenge'); } catch{}
     for(let i=1;i<=3;i++) setTimeout(()=>setAiStep(i), i*600);
     setTimeout(()=>{ setAiDone(true); setSubmitting(false);
       try{ challengesAPI.update(saved._id.replace('#',''),{workflowStage:'ai-analyses'}).catch(()=>{}); setTimeout(async()=>{ try{ await challengesAPI.update(saved._id.replace('#',''),{workflowStage:'sent-to-university'});}catch{} },800);
@@ -199,10 +220,18 @@ export default function SubmitWithWorkflowPage(){
         </div>
 
         <div className="max-w-2xl mx-auto">
+          {draftRestored && (
+            <div className="mb-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 p-3 flex items-center gap-2 text-xs">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+              <span className="font-semibold">Draft restored — continuing same form</span>
+              <span className="text-slate-500">Your photo & details from before login were pasted back exactly.</span>
+              <button onClick={()=>{ localStorage.removeItem('samadhanhub_draft_challenge'); setDraftRestored(false); }} className="ml-auto text-xs underline">Clear</button>
+            </div>
+          )}
           <div className="mb-6">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Tell us what happened</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Step 2 of 7 — Report. Simple for you, sophisticated behind.</p>
-            {!user && <div className="mt-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 p-3 text-xs">You’ll be asked to <Link href="/auth/login" className="font-bold text-amber-700 dark:text-amber-400 underline">Login / Create account</Link> after this — per workflow, then AI runs.</div>}
+            {!user && <div className="mt-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 p-3 text-xs">You’ll be asked to <Link href="/auth/login" className="font-bold text-amber-700 dark:text-amber-400 underline">Login / Create account</Link> after this — per workflow, your form is saved and will be restored after login.</div>}
           </div>
 
           <div className="rounded-[20px] border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-5 sm:p-6 shadow-sm space-y-5">
