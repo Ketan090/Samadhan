@@ -177,9 +177,38 @@ export default function SubmitComplaintPage() {
     );
   }
 
+  const workflowSteps = [
+    { key: 'welcome', label: 'Welcome', icon: 'H', done: true },
+    { key: 'report', label: 'Report', icon: '≡', active: true },
+    { key: 'login', label: 'Login', icon: '◐' },
+    { key: 'ai', label: 'AI Scan', icon: '◎' },
+    { key: 'university', label: 'University', icon: '▭' },
+    { key: 'review', label: 'Review', icon: '⧉' },
+    { key: 'complete', label: 'Complete', icon: '⊕' },
+  ];
+
   return (
     <div className="min-h-screen bg-white dark:bg-[#070A12]">
-      <div className="container max-w-2xl py-6 sm:py-10">
+      <div className="container max-w-3xl py-4 sm:py-6">
+        <div className="mb-6 overflow-x-auto -mx-4 px-4">
+          <div className="flex items-center gap-1 min-w-[640px]">
+            {workflowSteps.map((s, i) => (
+              <React.Fragment key={s.key}>
+                <div className={`h-1.5 flex-1 rounded-full ${i <= 1 ? 'bg-teal-700 dark:bg-teal-600' : 'bg-slate-200 dark:bg-white/10'}`} />
+              </React.Fragment>
+            ))}
+          </div>
+          <div className="flex justify-between mt-2 min-w-[640px]">
+            {workflowSteps.map(s => (
+              <div key={s.key} className={`flex items-center gap-1.5 text-xs ${s.active ? 'text-teal-700 dark:text-teal-400 font-bold' : s.done ? 'text-slate-900 dark:text-white font-semibold' : 'text-slate-400'}`}>
+                <span className={`h-5 w-5 rounded-full grid place-items-center text-[10px] border ${s.active ? 'bg-teal-700 text-white border-teal-700' : s.done ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white' : 'bg-slate-100 dark:bg-white/10 border-slate-200 dark:border-white/10 text-slate-400'}`}>{s.icon}</span>
+                {s.label}
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-slate-400 mt-2 min-w-[640px]">Landing → Registration → Login → AI Analyses (De-duplication, Validation, Auto-description, AI-matching) → University → Government → Industry → Citizen Satisfied</p>
+        </div>
+        <div className="max-w-2xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Tell us what happened</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Simple for you. We handle the complexity behind the scenes.</p>
@@ -282,6 +311,7 @@ export default function SubmitComplaintPage() {
             {submitting ? 'Submitting...' : 'Submit Complaint'} <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
           <p className="text-xs text-slate-400 text-center">By submitting, you agree to community guidelines. No AI jargon — just your problem.</p>
+        </div>
         </div>
       </div>
     </div>
