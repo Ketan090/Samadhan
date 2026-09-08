@@ -3,9 +3,59 @@ import Challenge from '../models/Challenge';
 import { protect, authorize, AuthRequest } from '../middleware/auth';
 import { validateChallenge, handleValidationErrors } from '../middleware/validation';
 import AIService from '../services/aiService';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 
 const router = Router();
 const aiService = AIService.getInstance();
+
+const uploadDir = path.join(__dirname, '../../uploads/challenges');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadDir),
+  filename: (_req, file, cb) => cb(null, `${Date.now()}-${Math.round(Math.random()*1e9)}${path.extname(file.originalname)}`)
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (/^image\/(jpeg|png|webp|jpg)$/.test(file.mimetype)) cb(null, true);
+    else cb(new Error('Only JPG, PNG, WEBP images allowed'));
+  }
+});
+
+function jaccard(a: string, b: string) {
+  const sa = new Set(a.toLowerCase().split(/\W+/).filter(w=>w.length>2));
+  const sb = new Set(b.toLowerCase().split(/\W+/).filter(w=>w.length>2));
+  if (!sa.size || !sb.size) return 0;
+  let inter=0; for(const w of sa) if(sb.has(w)) inter++;
+  return inter / (sa.size + sb.size - inter);
+}
+async function findDuplicates(category: string, city: string, title: string, description: string) {
+  const recent = await Challenge.find({ category, 'location.city': city, createdAt: { $gte: new Date(Date.now()-30*24*60*60*1000) } }).limit(20);
+  const dups:any[] = [];
+  for(const c of recent){
+    const titleSim = jaccard(title, c.title);
+    const descSim = jaccard(description, c.description);
+    const score = titleSim*0.6 + descSim*0.4;
+    if(score > 0.55) dups.push({ challenge: c, score: Math.round(score*100) });
+  }
+  dups.sort((a,b)=>b.score-a.score);
+  return dups.slice(0,3);
+}
+function computePriority(severity: string, affected: number, supporters=0, verified=false, daysOpen=0) {
+  const sevMap:any={ low: 20, medium: 40, high: 65, critical: 85 };
+  let score = sevMap[severity] || 40;
+  score += Math.min(15, Math.log10(Math.max(affected,1))*4);
+  score += Math.min(10, supporters*2);
+  if(verified) score += 5;
+  score += Math.min(5, daysOpen*0.3);
+  score = Math.min(100, Math.round(score));
+  const level = score>=80 ? 'HIGH' : score>=60 ? 'MEDIUM' : 'LOW';
+  const why = `Severity ${severity} (${sevMap[severity]}), ${affected.toLocaleString()} affected, ${supporters} supporters${verified ? ', verified' : ''}`;
+  return { score, level, why };
+}
 
 // GET /api/challenges
 router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
@@ -68,16 +118,62 @@ router.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
   }
 });
 
-// POST /api/challenges
-router.post('/', protect, validateChallenge, handleValidationErrors, async (req: AuthRequest, res: Response): Promise<void> => {
+// POST /api/challenges — supports JSON or multipart with image
+router.post('/', protect, upload.single('image'), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    // Handle both JSON and multipart
+    const body:any = req.body;
+    // Parse JSON fields if multipart sent them as strings
+    if (body.affectedPopulation) body.affectedPopulation = Number(body.affectedPopulation);
+    if (body.suggestedExpertise && typeof body.suggestedExpertise === 'string') {
+      try { body.suggestedExpertise = JSON.parse(body.suggestedExpertise); } catch { body.suggestedExpertise = body.suggestedExpertise.split(',').map((s:string)=>s.trim()).filter(Boolean); }
+    }
+    // Basic validation (mirrors validateChallenge but works with multipart)
+    if (!body.title || body.title.length < 6) { res.status(400).json({ success:false, message:'Title at least 6 chars' }); return; }
+    if (!body.description || body.description.length < 20) { res.status(400).json({ success:false, message:'Description at least 20 chars' }); return; }
+    if (!body.category) { res.status(400).json({ success:false, message:'Category required' }); return; }
+
+    const file = (req as any).file as Express.Multer.File | undefined;
+    let imageUrl: string | undefined;
+    if (file) imageUrl = `/uploads/challenges/${file.filename}`;
+    else if (body.imageBase64) imageUrl = body.imageBase64; // fallback for base64 from old client
+    else if (body.evidence?.images?.[0]) imageUrl = body.evidence.images[0];
+
+    // Duplicate detection
+    const city = body.location?.city || body.city || 'Unknown';
+    const dups = await findDuplicates(body.category, city, body.title, body.description);
+
+    // Priority
+    const priority = computePriority(body.severity || 'medium', Number(body.affectedPopulation)||0, 0, false, 0);
+
     const challenge = await Challenge.create({
-      ...req.body,
+      title: body.title,
+      description: body.description,
+      category: body.category,
+      subcategory: body.subcategory,
+      location: body.location || { city, state: body.location?.state || body.state || 'Unknown', pincode: body.location?.pincode || '' },
+      affectedPopulation: Number(body.affectedPopulation)||0,
+      urgency: body.urgency || 'medium',
+      severity: body.severity || 'medium',
+      currentConsequences: body.currentConsequences,
+      existingAttempts: body.existingAttempts,
+      desiredOutcome: body.desiredOutcome,
+      constraints: body.constraints,
+      availableResources: body.availableResources,
+      suggestedExpertise: body.suggestedExpertise || [],
+      evidence: { images: imageUrl ? [imageUrl] : [], links: body.evidence?.links || [] },
+      tags: body.tags,
       submittedBy: req.user!._id,
       organization: req.user!.organization,
       status: 'submitted',
-      verificationStatus: 'pending'
+      verificationStatus: 'pending',
+      priorityScore: priority.score,
+      priorityLevel: priority.level,
     });
+
+    // Save image URL already handled; Run AI analysis (non-blocking for duplicate)
+    // Duplicate warning is returned immediately; client can decide to continue or view existing
+    const duplicateWarning = dups.length ? { message: 'A similar problem may already have been reported nearby.', duplicates: dups.map(d=>({ _id: d.challenge._id, title: d.challenge.title, location: d.challenge.location, score: d.score })) } : null;
 
     // Run AI analysis
     try {
@@ -106,7 +202,7 @@ router.post('/', protect, validateChallenge, handleValidationErrors, async (req:
       console.log('AI analysis failed, continuing without it');
     }
 
-    res.status(201).json({ success: true, challenge });
+    res.status(201).json({ success: true, challenge, duplicateWarning, priority, imageUrl });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Failed to create challenge', error: error.message });
   }

@@ -87,12 +87,30 @@ export default function SubmitComplaintPage() {
     if (!isValid) return;
     setSubmitting(true);
     const ref = '#SAM-' + Math.floor(100000 + Math.random() * 900000);
-    // Save first — never lose submission
     let saved: any = { _id: ref.replace('#',''), title, description, category, location: { city: city.trim(), state: state.trim(), pincode: '' }, affectedPopulation: 1000, urgency: 'medium', severity, status: 'submitted', verificationStatus: 'pending', photo: photo, createdAt: new Date().toISOString() };
     setError(null);
     try {
-      const res = await challengesAPI.create({ title, description, category, location: saved.location, affectedPopulation: saved.affectedPopulation, urgency: saved.urgency, severity: saved.severity, currentConsequences: '', existingAttempts: '', desiredOutcome: '', constraints: '', availableResources: '', suggestedExpertise: [], evidence: { links: [], images: photo ? [photo] : [] } });
+      const fd = new FormData();
+      fd.append('title', title);
+      fd.append('description', description);
+      fd.append('category', category);
+      fd.append('city', city.trim());
+      fd.append('state', state.trim());
+      fd.append('location', JSON.stringify(saved.location));
+      fd.append('affectedPopulation', String(saved.affectedPopulation));
+      fd.append('urgency', saved.urgency);
+      fd.append('severity', severity);
+      if (photoFile) fd.append('image', photoFile);
+      else if (photo) fd.append('imageBase64', photo);
+      const res = await challengesAPI.create(fd);
       saved = { ...res.data.challenge, photo };
+      if (res.data?.duplicateWarning) {
+        setError(`Possible duplicate: ${res.data.duplicateWarning.duplicates.map((d:any)=>d.title).join(', ')} — you can support existing or still submit.`);
+      }
+      if (res.data?.priority) {
+        saved.priorityScore = res.data.priority.score;
+        saved.priorityLevel = res.data.priority.level;
+      }
       setReference('#' + saved._id.slice(-6).toUpperCase());
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Submission failed. Please try again.';
