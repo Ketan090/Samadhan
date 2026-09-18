@@ -15,9 +15,10 @@ const categories = ['Environment','Healthcare','Education','Transportation','Agr
 
 export default function SubmitWithWorkflowPage(){
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [step, setStep] = useState(1);
   const [draftRestored, setDraftRestored] = useState(false);
+  const [photoNeeded, setPhotoNeeded] = useState(false);
   // Restore draft saved before login — per poster: form filled before login, then continue after login by fetching copied part
   React.useEffect(()=>{
     try{
@@ -30,7 +31,23 @@ export default function SubmitWithWorkflowPage(){
         if(d.city) setCity(d.city);
         if(d.stateName) setStateName(d.stateName);
         if(d.severity) setSeverity(d.severity);
-        if(d.photo) { setPhoto(d.photo); if(d.photoFileName) setPhotoFile(null); }
+        if(Array.isArray(d.tags)) setTags(d.tags.filter((t:any)=>typeof t==='string').map((t:string)=>slugTag(t)).filter(Boolean).slice(0,10));
+        if(d.photoMissing && !d.photo) setPhotoNeeded(true);
+        if(d.photo) {
+          setPhoto(d.photo); if(d.photoFileName) setPhotoFile(null);
+          // Re-run AI scan on the restored photo (draft only keeps base64, not the File)
+          if (!autoAnalyzedRef.current && !d.title) {
+            autoAnalyzedRef.current = true;
+            (async () => {
+              try {
+                const blob = await (await fetch(d.photo)).blob();
+                const f = new File([blob], 'restored.jpg', { type: blob.type || 'image/jpeg' });
+                setPhotoFile(f);
+                analyzePhotoFile(f);
+              } catch { /* photo still submittable without AI */ }
+            })();
+          }
+        }
         setDraftRestored(true);
         setTimeout(()=>setDraftRestored(false), 4000);
       }
@@ -45,6 +62,31 @@ export default function SubmitWithWorkflowPage(){
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
+  const navTimer = useRef<any>(null);
+  React.useEffect(() => () => { if (navTimer.current) clearTimeout(navTimer.current); }, []);
+
+  // Quota-safe draft save: full photo first, then downscaled, then text-only.
+  // Large photos can exceed the ~5MB localStorage quota and previously threw here.
+  const storeDraft = async (): Promise<void> => {
+    const base = { title, description, category, city, stateName, severity, tags, draftAt: new Date().toISOString() };
+    const trySet = (d: any) => { try { localStorage.setItem('samadhanhub_draft_challenge', JSON.stringify(d)); return true; } catch { return false; } };
+    if (trySet({ ...base, photo })) return;
+    try {
+      const src: Blob = photoFile || await (await fetch(photo as string)).blob();
+      const bmp = await createImageBitmap(src);
+      const scale = Math.min(1, 960 / Math.max(bmp.width, bmp.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(bmp.width * scale));
+      canvas.height = Math.max(1, Math.round(bmp.height * scale));
+      canvas.getContext('2d')!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+      const small: string = await new Promise((res) => canvas.toBlob((b) => {
+        const r = new FileReader(); r.onload = () => res(r.result as string); r.readAsDataURL(b as Blob);
+      }, 'image/jpeg', 0.7));
+      if (small && trySet({ ...base, photo: small })) return;
+    } catch { /* fall through to text-only */ }
+    trySet({ ...base, photoMissing: true });
+  };
   const [submitted, setSubmitted] = useState(false);
   const [reference, setReference] = useState('');
   const [aiStep, setAiStep] = useState(0);
@@ -52,7 +94,39 @@ export default function SubmitWithWorkflowPage(){
   const [vision, setVision] = useState<any>(null);
   const [visionAnalyzing, setVisionAnalyzing] = useState(false);
   const [showVision, setShowVision] = useState(false);
-  const [visionPrefs, setVisionPrefs] = useState({ title:true, description:true, category:true });
+  // Definitive "no civic issue" verdict — blocks submission until a real issue photo is attached
+  const [noIssueFound, setNoIssueFound] = useState(false);
+  // AI-generated description: shown below the field with Add / Dismiss — never forced in
+  const [descSuggestion, setDescSuggestion] = useState<string | null>(null);
+  const [showDescSuggest, setShowDescSuggest] = useState(false);
+  // AI tags for the identified civic problem — saved with the challenge, searchable later
+  const [tags, setTags] = useState<string[]>([]);
+  const [aiSuggestedTags, setAiSuggestedTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
+
+  const slugTag = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30);
+  const deriveTags = (d: any): string[] => {
+    const out: string[] = [];
+    const stop = new Set(['with', 'from', 'area', 'city', 'large', 'small', 'near', 'around', 'civic', 'issue', 'visible', 'shows', 'seen', 'plus', 'this', 'that', 'have', 'general', 'scene']);
+    (d.detections || []).forEach((x: any) => { const t = slugTag(String(x.label || '')); if (t && t.length >= 3) out.push(t); });
+    if (d.category) { const t = slugTag(String(d.category).split('|')[0]); if (t && t.length >= 3) out.push(t); }
+    String(d.problem || '').toLowerCase().split(/[^a-z]+/).forEach((w) => {
+      if (w.length > 4 && !stop.has(w) && out.length < 8) { const t = slugTag(w); if (t) out.push(t); }
+    });
+    return Array.from(new Set(out)).slice(0, 8);
+  };
+  const mapAiCategory = (aiCat: string, problem: string): string | null => {
+    const t = `${aiCat} ${problem}`.toLowerCase();
+    if (/waste|garbage|pollution|recycl|sewage|sanitation/.test(t)) return 'Environment';
+    if (/traffic|pothole|road|transport|bus|metro|parking/.test(t)) return 'Transportation';
+    if (/water|drain|flood|sewer/.test(t)) return 'Infrastructure';
+    if (/health|hospital|clinic|disease|medical/.test(t)) return 'Healthcare';
+    if (/school|educat|student|teacher|literacy/.test(t)) return 'Education';
+    if (/farm|crop|irrigat|agri/.test(t)) return 'Agriculture';
+    if (/women|safety|child|elderly|harass/.test(t)) return 'Social Welfare';
+    if (/digital|internet|app|software/.test(t)) return 'Technology';
+    return null;
+  };
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -71,51 +145,123 @@ export default function SubmitWithWorkflowPage(){
   ];
   const activeWorkflow = !submitted ? 1 : !aiDone ? 3 : 4;
 
-  const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>)=>{
-    const f=e.target.files?.[0]; if(!f) return;
-    if(f.size>8*1024*1024){ alert('Photo too large, max 8MB'); return; }
-    if(!f.type.startsWith('image/')){ alert('Please choose an image'); return; }
-    setPhotoFile(f);
-    const reader=new FileReader();
-    reader.onload=async()=>{
-      const b64=reader.result as string; setPhoto(b64); setVision(null); setShowVision(false);
-      // Porter primary
-      try{
-        const fd=new FormData(); fd.append('image', f);
-        const r=await fetch('/api/porter/analyze',{method:'POST', body:fd});
-        const j=await r.json();
-        if(j.success && j.data?.issues?.length){
-          const first=j.data.issues[0];
-          setVision({ detected:`Potential ${first.title} detected — ${Math.round(first.confidence>1?first.confidence:first.confidence*100)}%`, suggestedTitle:first.title, suggestedDescription:first.description, suggestedCategory:first.category.includes('Road')?'Infrastructure':first.category.includes('Waste')?'Environment':first.category, confidence:Math.round(first.confidence>1?first.confidence:first.confidence*100)});
-          setShowVision(true); return;
+  const [visionRaw, setVisionRaw] = useState<any>(null);
+  const [visionError, setVisionError] = useState<string | null>(null);
+  const autoAnalyzedRef = useRef(false);
+  const analyzePhotoFile = async (f: File) => {
+    setVision(null); setVisionRaw(null); setVisionError(null); setShowVision(false); setVisionAnalyzing(true);
+    setDescSuggestion(null); setShowDescSuggest(false); setNoIssueFound(false);
+    // AI-folder only: POST multipart to /api/vision/analyze (backend port of AI/civic)
+    try {
+      const fd = new FormData(); fd.append('image', f); fd.append('lang', 'en');
+      const r = await fetch('/api/vision/analyze', { method: 'POST', body: fd, signal: AbortSignal.timeout(100000) as any });
+      let j: any = null;
+      try { j = await r.json(); } catch { throw new Error('AI server unreachable — it may be waking up. Retry in 30s.'); }
+      if (j.success && j.data) {
+        const d = j.data;
+        setVisionRaw(d);
+        const firstDet = d.detections?.[0];
+        const conf = d.confidence || firstDet?.confidence || 88;
+        setVision({ detected: d.isCivic === false ? 'No obvious civic issue detected.' : `Potential ${d.problem} detected — ${conf}% confidence.`, suggestedTitle: firstDet?.label || d.problem, suggestedDescription: d.complaintLetter || d.whatSeen, suggestedCategory: firstDet?.category || d.category, confidence: conf, severity: d.severity, whatSeen: d.whatSeen, evidences: d.evidences, engine: j.engine, model: j.model });
+        // No civic issue → submission stays blocked until a real issue photo is attached
+        setNoIssueFound(d.isCivic === false);
+        // Description is offered ONLY for real civic issues. With no issue,
+        // nothing appears in the description box — the "What I see" panel
+        // still tells the user what the AI sees.
+        const civic = d.isCivic !== false && !/no civic issue/i.test(String(d.problem || ''));
+        const gen = civic ? (d.complaintLetter || d.whatSeen || '') : '';
+        if (gen && gen.trim().length >= 20) { setDescSuggestion(gen.trim()); setShowDescSuggest(true); }
+        // AI tags for the identified civic problem → pre-selected, searchable later
+        const sug = deriveTags(d);
+        if (sug.length) {
+          setAiSuggestedTags(sug);
+          setTags((prev) => Array.from(new Set(prev.concat(sug))).slice(0, 10));
         }
-      }catch{}
-      try{
-        const res=await aiMatchingAPI.analyzeImage({image:b64, hint:title||category});
-        if(res.data?.detected){ setVision(res.data); setShowVision(true); return; }
-      }catch{}
-      setVision({ detected:'Photo received — add a title for more specific AI', suggestedTitle:'Civic issue — photo detected', suggestedDescription:'Photo shows an issue that appears to affect the community. Please confirm or edit.', suggestedCategory:category||'Environment', confidence:72 });
-      setShowVision(true);
-    };
-    reader.readAsDataURL(f);
+        setShowVision(true); setVisionAnalyzing(false); return;
+      }
+      throw new Error(j.message || 'AI busy — retry in 30s.');
+    } catch (err: any) {
+      const msg = String(err?.name === 'TimeoutError' || err?.name === 'AbortError' ? 'AI timed out (server may be waking up).' : err?.message || 'AI analysis failed.');
+      setVisionError(`${msg} You can still continue — type the title & description manually and submit.`);
+      setVisionAnalyzing(false);
+    }
   };
-  const applyVision=()=>{
-    if(!vision) return;
-    if(visionPrefs.title && vision.suggestedTitle) setTitle(vision.suggestedTitle);
-    if(visionPrefs.description && vision.suggestedDescription) setDescription(vision.suggestedDescription);
-    if(visionPrefs.category && vision.suggestedCategory) setCategory(vision.suggestedCategory);
-    setShowVision(false);
+  const [photoNote, setPhotoNote] = useState<string | null>(null);
+  // Normalize any phone photo to an AI-ready JPEG (downscaled). Throws on
+  // undecodable formats (e.g. iPhone HEIC) so we can say so plainly.
+  const processImageFile = async (f: File): Promise<File> => {
+    const bmp = await createImageBitmap(f).catch(() => { throw new Error('format'); });
+    // Token diet: 768px is plenty for detection boxes (~1/2 the image tokens
+    // of 1024px) and keeps uploads small so slow networks don't time out.
+    const scale = Math.min(1, 768 / Math.max(bmp.width, bmp.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bmp.width * scale));
+    canvas.height = Math.max(1, Math.round(bmp.height * scale));
+    canvas.getContext('2d')!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    const blob: Blob = await new Promise((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error('encode'))), 'image/jpeg', 0.70));
+    return new File([blob], f.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' });
+  };
+  const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>)=>{
+    const f=e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file
+    if(!f) return;
+    setPhotoNote(null);
+    if(!f.type.startsWith('image/') && !/\.(jpe?g|png|webp|heic|heif)$/i.test(f.name)){
+      setPhotoNote('Please choose an image file (JPG or PNG).');
+      return;
+    }
+    try {
+      const ready = await processImageFile(f);
+      if (ready.size > 8 * 1024 * 1024) { setPhotoNote('Photo still too large after compression — try a smaller one.'); return; }
+      setPhotoFile(ready);
+      const b64 = await new Promise<string>((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result as string);
+        reader.onerror = () => rej(new Error('read'));
+        reader.readAsDataURL(ready);
+      });
+      setPhoto(b64);
+      analyzePhotoFile(ready);
+    } catch {
+      setPhotoNote('This photo format can’t be read here (e.g. iPhone HEIC). Please pick a JPG/PNG from gallery or retake as JPG.');
+    }
+  };
+  const useSuggestedTitle = () => {
+    if (!vision?.suggestedTitle) return;
+    const t = String(vision.suggestedTitle).toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()).slice(0, 80);
+    if (!title.trim()) setTitle(t);
+    else setTitle(`${title.trim()} — ${t}`.slice(0, 120));
+  };
+  const useSuggestedCategory = () => {
+    const m = mapAiCategory(vision?.suggestedCategory || '', visionRaw?.problem || '');
+    if (m) setCategory(m);
+  };
+  const toggleTag = (t: string) => {
+    setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t].slice(0, 10)));
+  };
+  const addCustomTag = () => {
+    const t = slugTag(tagInput);
+    if (!t || t.length < 2) return;
+    setTags((prev) => (prev.includes(t) ? prev : [...prev, t].slice(0, 10)));
+    setTagInput('');
   };
 
   const handleSubmit=async()=>{
-    if(!isStep1Valid || !isPhotoValid) return;
+    if(!isStep1Valid || !isPhotoValid || noIssueFound) return;
     if(!user){
-      try{ localStorage.setItem('samadhanhub_draft_challenge', JSON.stringify({ title, description, category, city, stateName, severity, photo, draftAt: new Date().toISOString() })); } catch{}
-      router.push('/auth/login?redirect=/challenges/submit');
+      // Logged-out: save draft, then MUST reach login — never leave the user staring at a dead button
+      setRedirecting(true);
+      try { await storeDraft(); } catch { /* navigation still proceeds */ }
+      const target = '/auth/login?redirect=/challenges/submit';
+      try { await router.push(target); }
+      catch { window.location.assign(target); }
+      navTimer.current = setTimeout(() => {
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth/login')) window.location.assign(target);
+      }, 1500);
       return;
     }
     setSubmitting(true); setError(null);
-    let saved:any={ _id:'#SAM-'+Math.floor(100000+Math.random()*900000).toString().replace('#',''), title, description, category, location:{city:city.trim(), state:stateName.trim()}, severity, photo };
+    let saved:any={ _id:'#SAM-'+Math.floor(100000+Math.random()*900000).toString().replace('#',''), title, description, category, location:{city:city.trim(), state:stateName.trim()}, severity, photo, tags };
     try{
       const fd=new FormData();
       fd.append('title',title); fd.append('description',description); fd.append('category',category);
@@ -123,6 +269,7 @@ export default function SubmitWithWorkflowPage(){
       fd.append('location',JSON.stringify({city:city.trim(), state:stateName.trim()}));
       fd.append('severity',severity);
       fd.append('affectedPopulation','1000');
+      if (tags.length) fd.append('tags', JSON.stringify(tags));
       if(photoFile) fd.append('image',photoFile);
       else if(photo) fd.append('imageBase64',photo);
       const res=await challengesAPI.create(fd);
@@ -242,6 +389,16 @@ export default function SubmitWithWorkflowPage(){
             <div>
               <label className="text-sm font-semibold">What's the issue? <span className="font-normal text-slate-400">— describe the problem</span></label>
               <Textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Describe the problem in your own words..." className="mt-2 min-h-[120px] rounded-xl" />
+              {showDescSuggest && descSuggestion && (
+                <div className="mt-2 rounded-xl border-2 border-teal-600/60 bg-teal-50 dark:bg-teal-950/10 p-3">
+                  <div className="text-[11px] font-bold text-teal-800 dark:text-teal-300">AI-generated description — add it?</div>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400 italic">"{descSuggestion.slice(0, 280)}{descSuggestion.length > 280 ? '…' : ''}"</p>
+                  <div className="mt-2 flex gap-2">
+                    <Button size="sm" className="rounded-full h-8 text-xs bg-teal-700 hover:bg-teal-800 text-white" onClick={() => { setDescription((prev) => (prev.trim() ? `${prev.trim()}\n\n${descSuggestion}` : descSuggestion)); setShowDescSuggest(false); }}>Add to description</Button>
+                    <Button size="sm" variant="outline" className="rounded-full h-8 text-xs" onClick={() => setShowDescSuggest(false)}>No, I'll type</Button>
+                  </div>
+                </div>
+              )}
             </div>
             <div>
               <label className="text-sm font-semibold">Category</label>
@@ -284,10 +441,27 @@ export default function SubmitWithWorkflowPage(){
               ) : (
                 <div className="mt-3 rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 relative">
                   <img src={photo} alt="Evidence preview" className="w-full h-56 object-cover" />
+                  {showVision && (visionRaw?.detections || []).length > 0 && (
+                    <div className="absolute inset-0 pointer-events-none">
+                      {(visionRaw.detections || []).slice(0, 6).map((det: any, i: number) => {
+                        const b = det.box || {};
+                        const x = Math.min(96, Math.max(0, Number(b.x) || 0));
+                        const y = Math.min(96, Math.max(0, Number(b.y) || 0));
+                        const w = Math.min(100 - x, Math.max(4, Number(b.w) || 20));
+                        const h = Math.min(100 - y, Math.max(4, Number(b.h) || 20));
+                        const colors = ['border-red-500', 'border-amber-400', 'border-emerald-400', 'border-sky-400', 'border-violet-400', 'border-pink-400'];
+                        return (
+                          <div key={i} className={`absolute border-2 ${colors[i % colors.length]} rounded-md`} style={{ left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%` }}>
+                            <span className="absolute -top-5 left-0 text-[10px] font-bold text-white bg-black/70 px-1.5 py-0.5 rounded whitespace-nowrap">{det.label}{det.confidence ? ` ${det.confidence}%` : ''}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
                   <div className="absolute bottom-2 left-2 right-2 flex gap-2">
                     <Button size="sm" variant="secondary" className="rounded-full bg-white/90 text-slate-900 hover:bg-white flex-1 h-8 text-xs" onClick={()=>fileRef.current?.click()}>Replace</Button>
-                    <Button size="sm" variant="secondary" className="rounded-full bg-white/90 text-red-600 hover:bg-white flex-1 h-8 text-xs" onClick={()=>{ setPhoto(null); setPhotoFile(null); }}>Remove</Button>
+                    <Button size="sm" variant="secondary" className="rounded-full bg-white/90 text-red-600 hover:bg-white flex-1 h-8 text-xs" onClick={()=>{ setPhoto(null); setPhotoFile(null); setNoIssueFound(false); setShowVision(false); setDescSuggestion(null); setShowDescSuggest(false); setTags([]); }}>Remove</Button>
                   </div>
                   <div className="absolute top-2 right-2 h-6 w-6 rounded-full bg-emerald-500 text-white grid place-items-center"><CheckCircle2 className="h-4 w-4" /></div>
                 </div>
@@ -295,20 +469,80 @@ export default function SubmitWithWorkflowPage(){
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
               <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhoto} />
               {!photo && <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">A photo is required to submit. It helps us verify.</p>}
+              {photoNote && (
+                <div className="mt-2 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 p-3 text-xs text-amber-700 dark:text-amber-300">{photoNote}</div>
+              )}
+              {noIssueFound && photo && (
+                <div className="mt-3 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 p-3 text-xs">
+                  <span className="font-bold text-red-700 dark:text-red-300">No civic issue found — submission blocked.</span>
+                  <span className="text-slate-600 dark:text-slate-400"> This photo shows no civic problem, so it can’t be reported. Please attach a photo showing a real issue (pothole, garbage, flooding, broken footpath…).</span>
+                </div>
+              )}
+              {photoNeeded && !photo && (
+                <div className="mt-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 p-3 text-xs">
+                  <span className="font-semibold text-amber-700 dark:text-amber-300">Please re-attach your photo</span>
+                  <span className="text-slate-600 dark:text-slate-400"> — it was too large to carry through login. Your text was restored.</span>
+                </div>
+              )}
               {visionAnalyzing && <div className="mt-3 rounded-xl bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-900/30 p-3 flex items-center gap-2 text-xs"><Eye className="h-4 w-4 text-violet-600 animate-pulse" /> AI is looking at your photo…</div>}
-              {showVision && vision && (
-                <div className="mt-3 rounded-2xl border-2 border-teal-600 bg-teal-50 dark:bg-teal-950/10 p-4">
-                  <div className="text-xs font-bold flex items-center gap-1.5"><Brain className="h-4 w-4 text-teal-700" /> AI saw: {vision.detected} <Badge className="ml-auto bg-teal-700 text-white text-[10px] rounded-full">{vision.confidence}%</Badge></div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Auto-fill for you?</p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    <label className="inline-flex items-center gap-1 text-xs bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 px-2 py-1 rounded-full"><input type="checkbox" checked={visionPrefs.title} onChange={e=>setVisionPrefs({...visionPrefs, title:e.target.checked})} /> Title</label>
-                    <label className="inline-flex items-center gap-1 text-xs bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 px-2 py-1 rounded-full"><input type="checkbox" checked={visionPrefs.description} onChange={e=>setVisionPrefs({...visionPrefs, description:e.target.checked})} /> Description</label>
-                    <label className="inline-flex items-center gap-1 text-xs bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 px-2 py-1 rounded-full"><input type="checkbox" checked={visionPrefs.category} onChange={e=>setVisionPrefs({...visionPrefs, category:e.target.checked})} /> Category</label>
+              {visionError && !visionAnalyzing && !showVision && (
+                <div className="mt-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 p-3 text-xs">
+                  <div className="font-semibold text-amber-700 dark:text-amber-300">AI scan unavailable</div>
+                  <p className="text-slate-600 dark:text-slate-400 mt-0.5">{visionError}</p>
+                  <div className="mt-2 flex gap-2">
+                    <Button size="sm" variant="outline" className="rounded-full h-8 text-xs" onClick={() => { if (photoFile) analyzePhotoFile(photoFile); }}>Retry AI scan</Button>
+                    <Button size="sm" variant="ghost" className="rounded-full h-8 text-xs" onClick={() => setVisionError(null)}>Continue manually</Button>
                   </div>
-                  {vision.suggestedDescription && <div className="mt-2 rounded-xl bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 p-2.5 text-xs italic">"{vision.suggestedDescription.slice(0,140)}"</div>}
-                  <div className="mt-3 flex gap-2">
-                    <Button size="sm" className="flex-1 rounded-full h-8 bg-teal-700 hover:bg-teal-800 text-white text-xs" onClick={applyVision}>Yes, auto-fill</Button>
-                    <Button size="sm" variant="outline" className="flex-1 rounded-full h-8 text-xs" onClick={()=>setShowVision(false)}>No, I'll type</Button>
+                </div>
+              )}
+              {showVision && vision && (
+                <div className="mt-3 rounded-2xl border-2 border-teal-600 bg-teal-50 dark:bg-teal-950/10 p-4 space-y-3">
+                  <div className="text-xs font-bold flex items-center gap-1.5"><Brain className="h-4 w-4 text-teal-700" /> AI saw: {vision.detected} <Badge className="ml-auto bg-teal-700 text-white text-[10px] rounded-full shrink-0">{vision.confidence}%</Badge></div>
+                  {vision.whatSeen && (
+                    <div className="rounded-xl bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 p-2.5">
+                      <div className="text-[11px] font-bold text-slate-500 mb-0.5">What I see:</div>
+                      <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">{vision.whatSeen}</p>
+                      {(vision.evidences || []).length > 0 && (
+                        <ul className="mt-1.5 space-y-0.5">
+                          {(vision.evidences || []).slice(0, 3).map((e: string, i: number) => (
+                            <li key={i} className="text-[11px] text-slate-500 flex gap-1"><span className="text-teal-600 font-bold">•</span><span>{e}</span></li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                  {(vision.suggestedTitle || (vision.suggestedCategory && mapAiCategory(vision.suggestedCategory, visionRaw?.problem || ''))) && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {vision.suggestedTitle && <button onClick={useSuggestedTitle} className="text-[11px] font-semibold bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 px-2.5 py-1 rounded-full hover:border-teal-500">Use title: {String(vision.suggestedTitle).slice(0, 32)}</button>}
+                      {vision.suggestedCategory && mapAiCategory(vision.suggestedCategory, visionRaw?.problem || '') && (
+                        <button onClick={useSuggestedCategory} className="text-[11px] font-semibold bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 px-2.5 py-1 rounded-full hover:border-teal-500">Use category: {mapAiCategory(vision.suggestedCategory, visionRaw?.problem || '')}</button>
+                      )}
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-[11px] font-bold text-teal-800 dark:text-teal-300 mb-1.5">AI tags for this problem — saved, searchable later</div>
+                    {aiSuggestedTags.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {aiSuggestedTags.map((t) => (
+                          <button key={t} onClick={() => toggleTag(t)} className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors ${tags.includes(t) ? 'bg-teal-700 text-white border-teal-700' : 'bg-white dark:bg-[#0F1420] border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:border-teal-500'}`}>
+                            #{t} {tags.includes(t) ? '✓' : '+'}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-slate-500">No tags suggested — add your own below.</p>
+                    )}
+                    {tags.filter((t) => !aiSuggestedTags.includes(t)).length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {tags.filter((t) => !aiSuggestedTags.includes(t)).map((t) => (
+                          <span key={t} className="inline-flex items-center gap-1 text-[11px] font-semibold bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-2.5 py-1 rounded-full">#{t}<button onClick={() => toggleTag(t)} className="opacity-70 hover:opacity-100">✕</button></span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-1.5 mt-2">
+                      <Input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomTag(); } }} placeholder="Add your own tag…" className="h-8 rounded-full text-xs" />
+                      <Button size="sm" variant="outline" onClick={addCustomTag} className="rounded-full h-8 text-xs shrink-0">Add</Button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -316,10 +550,15 @@ export default function SubmitWithWorkflowPage(){
             {error && <div className="rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 p-3 text-sm text-red-700 dark:text-red-400">{error}</div>}
             <div className="flex gap-3">
               <Link href="/" className="flex-1"><Button variant="outline" className="w-full rounded-full h-12">Cancel</Button></Link>
-              <Button onClick={handleSubmit} disabled={!isStep1Valid || !isPhotoValid || submitting} className="flex-[2] h-12 rounded-full bg-teal-700 hover:bg-teal-800 text-white text-[15px] font-semibold disabled:opacity-50">
-                {submitting ? 'Submitting...' : 'Next: Login → AI Scan'} <ArrowRight className="ml-2 h-4 w-4" />
+              <Button onClick={handleSubmit} disabled={!isStep1Valid || !isPhotoValid || submitting || redirecting || authLoading || noIssueFound} className="flex-[2] h-12 rounded-full bg-teal-700 hover:bg-teal-800 text-white text-[15px] font-semibold disabled:opacity-50">
+                {submitting ? 'Submitting...' : redirecting ? 'Saving… → Login' : authLoading ? 'Checking login…' : 'Next: Login → AI Scan'} <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
+            {(!isStep1Valid || !isPhotoValid) && !submitting && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
+                To continue: {[title.trim().length < 6 && 'title (min 6 chars)', description.trim().length < 20 && 'description (min 20 chars)', !category && 'category', city.trim().length < 2 && 'city', stateName.trim().length < 2 && 'state', !photo && 'photo'].filter(Boolean).join(' · ')} still needed.
+              </p>
+            )}
             <p className="text-xs text-slate-400 text-center">By continuing, you go to Login → AI Analyses (4 checks) → University portal per workflow.</p>
           </div>
         </div>

@@ -8,7 +8,7 @@ const nextConfig = {
     ],
   },
   async rewrites() {
-    const backend = process.env.BACKEND_URL || 'https://samadhanhub-api.onrender.com';
+    const backend = (process.env.BACKEND_URL || 'https://samadhanhub-api.onrender.com').trim();
     return [
       {
         source: '/api/:path*',
