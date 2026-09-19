@@ -22,11 +22,5 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
       ]
     }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://samadhanhub-api.onrender.com/api/:path*"
-    }
   ]
 }
