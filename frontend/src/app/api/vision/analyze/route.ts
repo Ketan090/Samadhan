@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
-  const BACKEND = (process.env.BACKEND_URL || 'https://samadhanhub-api.onrender.com').trim();
+  // Same local-first default as next.config.mjs (see comment there).
+  const BACKEND = (process.env.BACKEND_URL || 'http://localhost:5000').trim();
   try {
     const fd = await req.formData();
     const upstream = await fetch(`${BACKEND}/api/vision/analyze`, {

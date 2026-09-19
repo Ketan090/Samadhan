@@ -8,7 +8,10 @@ const nextConfig = {
     ],
   },
   async rewrites() {
-    const backend = (process.env.BACKEND_URL || 'https://samadhanhub-api.onrender.com').trim();
+    // Local-first default (like the single-server CivicLens days): a bare
+    // `npm run dev` just works. Production MUST set BACKEND_URL to the live
+    // backend — localhost:5000 doesn't exist on Vercel.
+    const backend = (process.env.BACKEND_URL || 'http://localhost:5000').trim();
     return [
       {
         source: '/api/:path*',
