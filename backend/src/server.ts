@@ -17,6 +17,7 @@ import analyticsRoutes from './routes/analytics';
 import aiRoutes from './routes/ai';
 import aiMatchingRoutes from './routes/aiMatching';
 import visionRoutes from './routes/vision';
+import notificationRoutes from './routes/notifications';
 
 dotenv.config();
 
@@ -41,11 +42,21 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Rate limiting
+// Rate limiting — split so normal browsing never trips on AI usage.
+// Global: generous backstop for all API traffic (polling + pages).
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
-  message: { success: false, message: 'Too many requests, please try again later' }
+  limit: 1000,
+  standardHeaders: 'draft-8',
+  message: { success: false, message: 'Too many requests — please wait a minute and retry.' }
+});
+// AI endpoints burn tokens/money per call: tighter per-connection budget
+// with a message that says what to do. Applied on top of the global one.
+const aiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  standardHeaders: 'draft-8',
+  message: { success: false, message: 'AI rate limit reached on your connection (too many AI requests). Wait a minute and retry — your work is saved.' }
 });
 app.use('/api/', limiter);
 
@@ -57,10 +68,11 @@ app.use('/api/organizations', organizationRoutes);
 app.use('/api/collaborations', collaborationRoutes);
 app.use('/api/evaluations', evaluationRoutes);
 app.use('/api/analytics', analyticsRoutes);
-app.use('/api/ai', aiRoutes);
-app.use('/api/ai-matching', aiMatchingRoutes);
-app.use('/api/porter', visionRoutes);
-app.use('/api/vision', visionRoutes);
+app.use('/api/ai', aiLimiter, aiRoutes);
+app.use('/api/ai-matching', aiLimiter, aiMatchingRoutes);
+app.use('/api/porter', aiLimiter, visionRoutes);
+app.use('/api/vision', aiLimiter, visionRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/api/health', (_, res) => {
@@ -96,6 +108,10 @@ io.on('connection', (socket) => {
 app.set('io', io);
 
 const PORT = process.env.PORT || 5000;
+// Long keep-alive so the Next.js dev rewrite proxy never reuses a dead
+// socket mid-upload (was causing ECONNRESET / "socket hang up" on photos).
+server.keepAliveTimeout = 30000;
+server.headersTimeout = 31000;
 server.listen(PORT, () => {
   console.log(`🚀 SamadhanHub API running on port ${PORT}`);
 });

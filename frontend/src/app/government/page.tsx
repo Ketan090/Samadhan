@@ -5,31 +5,72 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatNumber, getStatusColor, getCategoryIcon } from '@/lib/utils';
-import { challengesAPI, analyticsAPI } from '@/lib/api';
+import { challengesAPI, analyticsAPI, solutionsAPI } from '@/lib/api';
+import { getCreatedChallenges, getAllLocalSolutions } from '@/lib/workflow';
 import {
   Shield, CheckCircle2, Clock, AlertTriangle, Rocket, BarChart3,
   Users, Lightbulb, Eye, Plus, Loader2
 } from 'lucide-react';
+import RoleAlerts from '@/components/RoleAlerts';
+import { useRequireRole, GateStandby } from '@/components/RequireRole';
 
 export default function GovernmentDashboard() {
   const [pending, setPending] = useState<any[]>([
     { _id: 'demo-1', title: 'Public Transport Route Optimization', category: 'Transportation', city: 'Kolkata', state: 'West Bengal', submittedBy: 'Green Earth Foundation', affected: 1000000 },
     { _id: 'demo-2', title: 'Digital Literacy for Senior Citizens', category: 'Education', city: 'Pune', state: 'Maharashtra', submittedBy: 'Digital India Foundation', affected: 50000 },
   ]);
+  const [awaitingSolutions, setAwaitingSolutions] = useState<any[]>([]);
   const [actioning, setActioning] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<any>(null);
+  // Your created challenges always rank above dummy/demo ones
+  const minePending = () => getCreatedChallenges().map((c:any)=>({ _id:c._id, title:c.title, category:c.category, city:c.location?.city, state:c.location?.state, submittedBy: 'You', affected: c.affectedPopulation||0, _mine:true }));
+  const mineSolutions = () => getAllLocalSolutions().filter((s:any)=>['submitted','under-review'].includes(s.status));
   const loadPending = async () => {
     try {
-      const [res, analyticsRes] = await Promise.all([
+      const [res, analyticsRes, solsRes] = await Promise.all([
         challengesAPI.getAll({ status: 'submitted', limit: 20 }),
-        analyticsAPI.getOverview().catch(() => null)
+        analyticsAPI.getOverview().catch(() => null),
+        solutionsAPI.getAll({ status: 'submitted' }).catch(() => null),
       ]);
       if (analyticsRes) setAnalytics(analyticsRes.data.overview);
       const list = res.data.challenges?.length ? res.data.challenges.map((c:any)=>({ _id:c._id, title:c.title, category:c.category, city:c.location?.city, state:c.location?.state, submittedBy: c.submittedBy?.name || c.organization?.name || 'Citizen', affected: c.affectedPopulation })) : [];
-      setPending(list);
-    } catch {}
+      const mine = minePending().filter((m) => !list.some((x:any) => x._id === m._id));
+      setPending([...mine, ...list]);
+      const apiSols = solsRes?.data?.solutions ? solsRes.data.solutions.slice(0, 10) : [];
+      const localSols = mineSolutions().filter((m) => !apiSols.some((x:any) => x._id === m._id));
+      setAwaitingSolutions([...localSols, ...apiSols]);
+    } catch {
+      setPending((prev) => {
+        const mine = minePending().filter((m) => !prev.some((x) => x._id === m._id));
+        return [...mine, ...prev];
+      });
+      setAwaitingSolutions((prev) => {
+        const localSols = mineSolutions().filter((m) => !prev.some((x:any) => x._id === m._id));
+        return [...localSols, ...prev];
+      });
+    }
   };
   useEffect(()=>{ loadPending(); },[]);
+  const handleApproveSolution = async (solId: string, challengeId?: string) => {
+    setActioning(solId);
+    const localCid = challengeId || awaitingSolutions.find((x) => x._id === solId)?._challengeId;
+    try {
+      await solutionsAPI.update(solId, { status: 'approved' });
+      setAwaitingSolutions((s) => s.filter((x) => x._id !== solId));
+      if (challengeId) await challengesAPI.update(challengeId, { workflowStage: 'government-approved' }).catch(() => {});
+    } catch {
+      // Offline: record approval locally so the workflow still advances
+      if (localCid) {
+        try {
+          const { updateLocalSolution, setLocalStage } = await import('@/lib/workflow');
+          updateLocalSolution(localCid, solId, { status: 'approved' });
+          setLocalStage(localCid, 'government-approved');
+        } catch {}
+      }
+      setAwaitingSolutions((s) => s.filter((x) => x._id !== solId));
+    }
+    finally { setActioning(null); }
+  };
   const handleVerify = async (id:string) => {
     setActioning(id);
     try { await challengesAPI.update(id, { verificationStatus: 'verified' }); setPending(p=>p.filter(x=>x._id!==id)); } 
@@ -42,6 +83,8 @@ export default function GovernmentDashboard() {
     catch { setPending(p=>p.filter(x=>x._id!==id)); }
     finally { setActioning(null); }
   };
+  const gate = useRequireRole(['government', 'admin']);
+  if (!gate.allowed) return <GateStandby />;
   return (
     <div className="min-h-screen bg-white dark:bg-[#070A12]">
       <div className="container py-10">
@@ -51,10 +94,12 @@ export default function GovernmentDashboard() {
           </div>
           <div className="flex-1">
             <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Government Dashboard</h1>
-            <p className="text-gray-500 dark:text-slate-400 mt-1">Ministry of Electronics and Information Technology</p>
+            <p className="text-gray-500 dark:text-slate-400 mt-1">Step 7 — Government Approves and Validates university solutions</p>
           </div>
           <Badge className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-medium border border-emerald-200 dark:border-emerald-500/20 px-3 py-1 gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Data</Badge>
         </div>
+
+        <div className="mb-8"><RoleAlerts /></div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-10">
           {[
@@ -97,6 +142,7 @@ export default function GovernmentDashboard() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <Badge className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 text-xs font-medium mb-3">Pending Verification</Badge>
+                    {ch._mine && <Badge className="bg-orange-500 text-white text-xs border-0 mb-3 ml-2">Yours</Badge>}
                     <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight break-words">{ch.title || 'Untitled Challenge'}</h3>
                     <p className="text-sm text-gray-500 dark:text-slate-400 mt-1 flex flex-wrap items-center gap-1">{ch.category ? <>{getCategoryIcon(ch.category)} {ch.category} •</> : null} {ch.city || 'Unknown'}, {ch.state || 'India'} • {formatNumber(ch.affected || 0)} affected</p>
                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-1.5 truncate">Submitted by {ch.submittedBy || 'Citizen'}</p>
@@ -134,30 +180,33 @@ export default function GovernmentDashboard() {
           </TabsContent>
 
           <TabsContent value="evaluate" className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white">Solutions Awaiting Government Evaluation</h2>
-            {[
-              { title: 'SmartBin: IoT-Enabled Waste Collection', challenge: 'Smart Waste Collection', team: 'EcoTech Solutions', submitted: '2024-03-15', score: 7.85 },
-              { title: 'AquaSense: Rural Water Quality Monitor', challenge: 'Rural Water Quality', team: 'WaterGuard India', submitted: '2024-03-20', score: null },
-            ].map(s => (
-              <div key={s.title} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-6 flex items-center justify-between hover:shadow-md dark:hover:border-white/15 transition-all duration-300">
-                <div>
-                  <Badge className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 text-xs font-medium mb-3">Under Review</Badge>
+            <div className="rounded-2xl border-2 border-orange-500/20 bg-orange-50/50 dark:bg-orange-950/10 p-4">
+              <div className="text-xs font-bold text-orange-700 dark:text-orange-300">GOVERNMENT APPROVES AND VALIDATES</div>
+              <div className="text-xs text-slate-500">University-proposed solutions appear here. Approving moves workflow → Industry Joins.</div>
+            </div>
+            <h2 className="text-xl font-bold text-gray-800 dark:text-white">Solutions Awaiting Government Evaluation {awaitingSolutions.length>0 && <span className="text-sm font-normal text-slate-500">· {awaitingSolutions.length} live</span>}</h2>
+            {awaitingSolutions.length===0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] p-8 text-center text-sm text-slate-500">No university proposals pending — new proposals from the University Portal will appear here live.</div>
+            ) : awaitingSolutions.map((s:any) => (
+              <div key={s._id} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:shadow-md transition-all">
+                <div className="min-w-0 flex-1">
+                  <Badge className="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 text-xs font-medium mb-2">University Proposed</Badge>
                   <h3 className="font-bold text-gray-800 dark:text-white">{s.title}</h3>
-                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">{s.challenge} • Team: {s.team}</p>
+                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5 truncate">{typeof s.challenge === 'object' ? s.challenge?.title : s.challenge} • {(s.steps?.length || 0)} steps</p>
                 </div>
-                <div className="flex items-center gap-3">
-                  {s.score && <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{s.score}/10</div>}
-                  <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl">Evaluate</Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Link href={`/solutions/${s._id}`}><Button size="sm" variant="outline" className="rounded-xl">Review</Button></Link>
+                  <Button size="sm" disabled={actioning===s._id} onClick={()=>handleApproveSolution(s._id, typeof s.challenge === 'object' ? s.challenge?._id : s.challenge)} className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl">{actioning===s._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><CheckCircle2 className="h-4 w-4 mr-1" /> Approve & Validate</>}</Button>
                 </div>
               </div>
             ))}
           </TabsContent>
 
           <TabsContent value="implement">
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Implementation Pipeline</h2>
+            <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Implementation Pipeline — Poster Workflow</h2>
             <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-7">
               <div className="flex items-center justify-between overflow-x-auto pb-4 gap-2">
-                {['Submitted', 'Verified', 'Open', 'Team Formed', 'Solution', 'Prototype', 'Pilot', 'Approved', 'Implemented', 'Measured'].map((stage, i) => {
+                {['Landing', 'Registration', 'Login', 'AI Analyses', 'Sent to Univ.', 'Univ. Proposed', 'Govt. Approved', 'Industry Join', 'Progress Photos', 'Citizen Happy'].map((stage, i) => {
                   const colors = ['bg-gray-100 dark:bg-white/5', 'bg-blue-50 dark:bg-blue-500/10', 'bg-green-50 dark:bg-green-500/10', 'bg-violet-50 dark:bg-violet-500/10', 'bg-indigo-50 dark:bg-indigo-500/10', 'bg-amber-50 dark:bg-amber-500/10', 'bg-orange-50 dark:bg-orange-500/10', 'bg-cyan-50 dark:bg-cyan-500/10', 'bg-emerald-50 dark:bg-emerald-500/10', 'bg-teal-50 dark:bg-teal-500/10'];
                   const textColors = ['text-gray-600 dark:text-slate-400', 'text-blue-600 dark:text-blue-400', 'text-green-600 dark:text-green-400', 'text-violet-600 dark:text-violet-400', 'text-indigo-600 dark:text-indigo-400', 'text-amber-600 dark:text-amber-400', 'text-orange-600 dark:text-orange-400', 'text-cyan-600 dark:text-cyan-400', 'text-emerald-600 dark:text-emerald-400', 'text-teal-600 dark:text-teal-400'];
                   const counts = [8, 12, 45, 23, 15, 8, 12, 6, 6, 4];

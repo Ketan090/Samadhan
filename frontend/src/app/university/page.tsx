@@ -6,7 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatNumber, getStatusColor, getCategoryIcon } from '@/lib/utils';
 import { challengesAPI, analyticsAPI } from '@/lib/api';
+import { getCreatedChallenges } from '@/lib/workflow';
 import { GraduationCap, Users, Lightbulb, Rocket, MapPin, ArrowRight, Plus, Award, Loader2 } from 'lucide-react';
+import RoleAlerts from '@/components/RoleAlerts';
+import { useRequireRole, GateStandby } from '@/components/RequireRole';
 
 const fallbackChallenges = [
   { _id: '1', title: 'Smart Waste Collection for Urban Wards', category: 'Environment', status: 'open', matchScore: 94, affectedPopulation: 25000, location: 'Ranchi, Jharkhand' },
@@ -40,11 +43,20 @@ export default function UniversityPortal() {
         if (analyticsRes) setAnalytics(analyticsRes.data.overview);
         if(r.data.challenges?.length){
           const list = r.data.challenges.map((c:any)=> ({ _id:c._id, title:c.title, category:c.category, status:c.status, affectedPopulation:c.affectedPopulation, location:`${c.location?.city||''}, ${c.location?.state||''}`, matchScore: 86 + Math.floor(Math.random()*8) }));
-          setChallenges(list);
+          const mine = getCreatedChallenges().map((c:any)=> ({ _id:c._id, title:c.title, category:c.category, status:c.status||'open', affectedPopulation:c.affectedPopulation||0, location:`${c.location?.city||''}, ${c.location?.state||''}`, matchScore: 98, _mine:true }));
+          setChallenges([...mine.filter(m=>!list.some((x:any)=>x._id===m._id)), ...list]);
+        } else {
+          const mine = getCreatedChallenges().map((c:any)=> ({ _id:c._id, title:c.title, category:c.category, status:c.status||'open', affectedPopulation:c.affectedPopulation||0, location:`${c.location?.city||''}, ${c.location?.state||''}`, matchScore: 98, _mine:true }));
+          if (mine.length) setChallenges([...mine, ...fallbackChallenges]);
         }
-      } catch{} finally{ setLoading(false); }
+      } catch {
+        const mine = getCreatedChallenges().map((c:any)=> ({ _id:c._id, title:c.title, category:c.category, status:c.status||'open', affectedPopulation:c.affectedPopulation||0, location:`${c.location?.city||''}, ${c.location?.state||''}`, matchScore: 98, _mine:true }));
+        setChallenges([...mine, ...fallbackChallenges]);
+      } finally{ setLoading(false); }
     })();
   },[]);
+  const gate = useRequireRole(['university', 'admin']);
+  if (!gate.allowed) return <GateStandby />;
   return (
     <div className="min-h-screen bg-white dark:bg-[#070A12]">
       <div className="container py-10">
@@ -54,13 +66,15 @@ export default function UniversityPortal() {
           </div>
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">University Portal</h1>
-            <p className="text-gray-500 dark:text-slate-400 mt-1">IIT Bombay • Department of Electronics Engineering</p>
+            <p className="text-gray-500 dark:text-slate-400 mt-1">Step 5–6 — Challenge Sent to University Portal → University Proposes a Solution</p>
           </div>
         </div>
 
+        <div className="mb-8"><RoleAlerts /></div>
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
           {[
-            { label: 'Relevant Challenges', value: analytics?.challenges?.total ?? 0, icon: Lightbulb, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+            { label: 'Relevant Challenges', value: analytics?.challenges?.total || challenges.length, icon: Lightbulb, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10' },
             { label: 'Active Projects', value: analytics?.activeCollaborations ?? 0, icon: Rocket, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
             { label: 'Student Teams', value: analytics?.totalUsers ?? 0, icon: Users, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-500/10' },
             { label: 'Solutions Submitted', value: analytics?.solutions?.total ?? 0, icon: Award, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10' },
@@ -89,6 +103,10 @@ export default function UniversityPortal() {
           </TabsList>
 
           <TabsContent value="challenges" className="space-y-4">
+            <div className="rounded-2xl border-2 border-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-950/10 p-4 flex flex-col sm:flex-row sm:items-center gap-2">
+              <div className="flex-1"><div className="text-xs font-bold text-emerald-700 dark:text-emerald-300">CHALLENGE SENT TO UNIVERSITY PORTAL</div><div className="text-xs text-slate-500">AI-matched challenges land here after AI Analyses. Propose a solution with step breakdown.</div></div>
+              <Link href="/workflow"><Button size="sm" variant="outline" className="rounded-full shrink-0">View Workflow</Button></Link>
+            </div>
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-800 dark:text-white">Recommended Challenges {loading && <Loader2 className="h-4 w-4 animate-spin inline ml-2" />}</h2>
               <Badge className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20">Live · Auto-updated</Badge>
@@ -100,6 +118,7 @@ export default function UniversityPortal() {
                     <div className="flex items-center gap-2 mb-3 flex-wrap">
                       <Badge className={`${getStatusColor(ch.status)} capitalize text-xs`}>{ch.status || 'open'}</Badge>
                       <Badge variant="outline" className="text-xs border-slate-200 dark:border-white/10 dark:text-slate-300">{getCategoryIcon(ch.category)} {ch.category || 'General'}</Badge>
+                      {ch._mine && <Badge className="bg-emerald-500 text-white text-xs border-0">Yours</Badge>}
                     </div>
                     <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight break-words">{ch.title || 'Untitled Challenge'}</h3>
                     <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-slate-400 mt-1.5">
@@ -112,7 +131,10 @@ export default function UniversityPortal() {
                       <div className="text-2xl sm:text-3xl font-bold text-emerald-500">{ch.matchScore || 85}%</div>
                       <div className="text-xs text-gray-500 dark:text-slate-400">Match</div>
                     </div>
-                    <Link href={`/challenges/${ch._id}`} className="shrink-0"><Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl">View <ArrowRight className="h-3 w-3 ml-1" /></Button></Link>
+                    <div className="flex gap-2">
+                      <Link href={`/challenges/${ch._id}`} className="shrink-0"><Button size="sm" variant="outline" className="rounded-xl">View</Button></Link>
+                      <Link href={`/solutions/submit?challenge=${ch._id}`} className="shrink-0"><Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl">Propose <ArrowRight className="h-3 w-3 ml-1" /></Button></Link>
+                    </div>
                   </div>
                 </div>
               </div>

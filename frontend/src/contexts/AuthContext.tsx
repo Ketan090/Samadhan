@@ -23,6 +23,8 @@ interface AuthContextType {
   register: (data: any) => Promise<void>;
   logout: () => void;
   updateUser: (user: User) => void;
+  demoMode: boolean;
+  setDemoMode: (v: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -100,49 +102,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Demo mode (Settings toggle, persisted). ON = the classic demo experience:
+  // demo accounts, demo datasets and offline fallbacks. OFF = real backend
+  // data only; failed requests surface as empty states, never demo content.
+  const [demoMode, setDemoModeState] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const v = localStorage.getItem('samadhanhub_demo_mode');
+      return v === null ? true : v === '1';
+    } catch { return true; }
+  });
+  const setDemoMode = (v: boolean) => {
+    setDemoModeState(v);
+    try { localStorage.setItem('samadhanhub_demo_mode', v ? '1' : '0'); } catch {}
+  };
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('samadhanhub_token');
-    const savedUser = localStorage.getItem('samadhanhub_user');
-    if (savedToken && savedUser) {
-      setToken(savedToken);
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch {
-        localStorage.removeItem('samadhanhub_token');
+    try {
+      // A saved user WITHOUT its token is a broken session (causes
+      // "Not authorized, no token") — discard it so login starts clean.
+      const savedUser = localStorage.getItem('samadhanhub_user');
+      const savedToken = localStorage.getItem('samadhanhub_token');
+      if (savedUser && savedToken) setUser(JSON.parse(savedUser));
+      else {
         localStorage.removeItem('samadhanhub_user');
+        localStorage.removeItem('samadhanhub_token');
       }
-    }
+    } catch {}
     setLoading(false);
+    // Stay in sync when any API call reports the token dead.
+    const onExpired = () => setUser(null);
+    window.addEventListener('samadhanhub:unauthorized', onExpired);
+    return () => window.removeEventListener('samadhanhub:unauthorized', onExpired);
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Check demo accounts first (works without a backend)
-    const demo = getDemoUser(email);
-    if (demo && demo.password === password) {
-      const mockToken = `demo-token-${demo.user.role}-${Date.now()}`;
-      setToken(mockToken);
-      setUser(demo.user);
-      localStorage.setItem('samadhanhub_token', mockToken);
-      localStorage.setItem('samadhanhub_user', JSON.stringify(demo.user));
-      return;
-    }
-
-    // Try real backend
+    setLoading(true);
     try {
-      const res = await authAPI.login(email, password);
-      const { token: newToken, user: newUser } = res.data;
-      setToken(newToken);
-      setUser(newUser);
-      localStorage.setItem('samadhanhub_token', newToken);
-      localStorage.setItem('samadhanhub_user', JSON.stringify(newUser));
-    } catch (err) {
-      // If backend is unreachable, check if it's a network error vs bad credentials
-      const error = err as any;
-      if (error?.code === 'ERR_NETWORK' || error?.message?.includes('Network Error') || error?.code === 'ECONNREFUSED') {
-        throw new Error('Backend is not available. Try a demo account below.');
+      // Real backend first — demo accounts are seeded there and return true JWTs.
+      try {
+        const res = await authAPI.login(email, password);
+        const { token, user } = res.data;
+        localStorage.setItem('samadhanhub_token', token);
+        localStorage.setItem('samadhanhub_user', JSON.stringify(user));
+        setUser(user);
+        return;
+      } catch (apiErr: any) {
+        // Backend rejected or unreachable — fall through to offline demo below.
+        // A 401 with a REAL account means wrong password: don't mask it.
+        if (apiErr?.response?.status === 401 && !getDemoUser(email)) throw apiErr;
       }
-      throw err;
+      // Offline demo session (works without DB; server calls fall back to on-device saves).
+      const demo = getDemoUser(email);
+      if (demo && demo.password === password) {
+        const token = `demo-token-${demo.user.role}-${Date.now()}`;
+        localStorage.setItem('samadhanhub_token', token);
+        localStorage.setItem('samadhanhub_user', JSON.stringify(demo.user));
+        setUser(demo.user);
+        return;
+      }
+      throw new Error('Invalid credentials.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -192,7 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, updateUser, demoMode, setDemoMode }}>
       {children}
     </AuthContext.Provider>
   );

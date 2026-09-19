@@ -62,6 +62,42 @@ const TRAVERSAL: Step[] = [
   { provider: 'xkiro', model: 'mistralai/mistral-large-2512', tier: 'heavy' },
 ];
 
+// Provider health memory — makes EVERY scan fast, not just lucky ones.
+// - The last working step goes first next time (10-min memory).
+// - A 429/quota failure cools that provider down globally for 15 min
+//   (quota won't recover mid-session; successes clear it).
+// Deliberately NO timeout-based cooldown: slow free tiers time out often
+// yet answer on retry — cooling them poisons the next scans. Timeouts are
+// bounded by the per-model timeout instead.
+// In-memory on purpose: quotas recover, and restarts start unbiased.
+const providerState = {
+  lastSuccess: null as { provider: string; model: string; ts: number } | null,
+  cooldownUntil: new Map<string, number>(),
+};
+function orderSteps(): Step[] {
+  const now = Date.now();
+  const avail = TRAVERSAL.filter((s) => (providerState.cooldownUntil.get(s.provider) || 0) <= now);
+  const base = avail.length ? avail : [...TRAVERSAL];
+  const last = providerState.lastSuccess;
+  if (last && now - last.ts < 10 * 60 * 1000) {
+    const i = base.findIndex((s) => s.provider === last.provider && s.model === last.model);
+    if (i > 0) {
+      const [hit] = base.splice(i, 1);
+      return [hit, ...base];
+    }
+  }
+  return base;
+}
+function noteSuccess(step: Step) {
+  providerState.lastSuccess = { provider: step.provider, model: step.model, ts: Date.now() };
+  providerState.cooldownUntil.delete(step.provider);
+}
+function noteFailure(step: Step, msg: string) {
+  if (/429|quota/i.test(msg)) {
+    providerState.cooldownUntil.set(step.provider, Date.now() + 15 * 60 * 1000);
+  }
+}
+
 async function callTextModel(step: Step, prompt: string, maxTokens = 400) {
   const cfg = PROVIDER_CFG[step.provider];
   if (!cfg || !cfg.key) throw new Error(`${step.provider} API key not set — set UNO_API_KEY / XKIRO_API_KEY / NVIDIA_API_KEY`);
@@ -125,15 +161,16 @@ router.post('/draft-solution', async (req: Request, res: Response) => {
     // First 9 steps cover xkiro + unorouter + the NVIDIA fallback, so text
     // drafting auto-shifts providers exactly like image analysis.
     const draftDead = new Set<string>();
-    for (const step of TRAVERSAL.slice(0, 9)) {
+    for (const step of orderSteps().slice(0, 9)) {
       if (draftDead.has(step.provider)) continue;
       try {
         const { parsed } = await callTextModel(step, spec.prompt(c), spec.tokens);
         const body = { success: true, field, text: parsed.text, items: parsed.items, steps: parsed.steps, model: step.model };
+        noteSuccess(step);
         setAnalyzeCache(draftKey, body);
         res.json(body);
         return;
-      } catch (e: any) { const msg = String(e.message || e); if (/429|quota/i.test(msg)) draftDead.add(step.provider); lastError = `${step.model}: ${msg.slice(0, 100)}`; continue; }
+      } catch (e: any) { const msg = String(e.message || e); if (/429|quota/i.test(msg)) draftDead.add(step.provider); noteFailure(step, msg); lastError = `${step.model}: ${msg.slice(0, 100)}`; continue; }
     }
     res.status(200).json({ success: false, message: `AI busy. Last: ${lastError}. Try again in 30s.` });
   } catch (e: any) {
@@ -325,17 +362,18 @@ router.post('/analyze', uploadImageJson, async (req: Request, res: Response) => 
       // and shift to the next provider (NVIDIA) immediately.
       const quotaDead = new Set<string>();
       for (let retry = 0; retry < 2; retry++) {
-        for (const step of TRAVERSAL) {
+        for (const step of orderSteps()) {
           if (quotaDead.has(step.provider)) continue;
           try {
             const { parsed, raw } = await callModel(step, step.provider === 'nvidia' ? promptShort : prompt, b64);
             const data = normalizeParsed(parsed);
             await mergeCvDetections(data, b64);
             const body = { success: true, engine: step.provider, demo: false, data, raw, model: step.model, tier: step.tier };
+            noteSuccess(step);
             setAnalyzeCache(cacheKey, body);
             res.json(body);
             return;
-          } catch (e: any) { const msg = String(e.message || e); if (/429|quota/i.test(msg)) quotaDead.add(step.provider); lastError = `${step.model}: ${msg.slice(0, 120)}`; continue; }
+          } catch (e: any) { const msg = String(e.message || e); if (/429|quota/i.test(msg)) quotaDead.add(step.provider); noteFailure(step, msg); lastError = `${step.model}: ${msg.slice(0, 120)}`; continue; }
         }
         // Second pass only when the failure looks transient — a 4xx/parse
         // failure would just burn tokens repeating the same calls.
@@ -360,7 +398,7 @@ router.post('/analyze', uploadImageJson, async (req: Request, res: Response) => 
     // Same 429 circuit-breaker as the non-stream path (see above).
     const quotaDead = new Set<string>();
     for (let retry = 0; retry < 2; retry++) {
-      for (const step of TRAVERSAL) {
+      for (const step of orderSteps()) {
         if (quotaDead.has(step.provider)) continue;
         send({ type: 'try', provider: step.provider, model: step.model, tier: step.tier, retry });
         try {
@@ -368,6 +406,7 @@ router.post('/analyze', uploadImageJson, async (req: Request, res: Response) => 
           const data = normalizeParsed(parsed);
           await mergeCvDetections(data, b64);
           send({ type: 'success', provider: step.provider, model: step.model, tier: step.tier, engine: step.provider, data, raw });
+          noteSuccess(step);
           send({ type: 'done', success: true, engine: step.provider, model: step.model });
           res.end();
           return;
@@ -375,6 +414,7 @@ router.post('/analyze', uploadImageJson, async (req: Request, res: Response) => 
           lastError = `${step.model}: ${String(e.message || e).slice(0, 160)}`;
           const msg = String(e.message || e);
           if (/429|quota/i.test(msg)) quotaDead.add(step.provider);
+          noteFailure(step, msg);
           const retryable = /429|403|404|500|502|503|timeout|blank|no JSON/i.test(msg);
           send({ type: 'error', provider: step.provider, model: step.model, tier: step.tier, error: lastError, retryable });
           await new Promise((r) => setTimeout(r, 40));

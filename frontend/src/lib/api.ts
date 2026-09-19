@@ -12,12 +12,25 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('samadhanhub_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    if (token) config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
+
+// Self-healing auth: a 401 means the stored token is missing/invalid
+// (e.g. stale demo session). Drop it and notify the app so the UI returns
+// to logged-out instead of firing "Not authorized, no token" on every action.
+api.interceptors.response.use(
+  (res) => res,
+  (error) => {
+    if (typeof window !== 'undefined' && error?.response?.status === 401) {
+      localStorage.removeItem('samadhanhub_token');
+      localStorage.removeItem('samadhanhub_user');
+      window.dispatchEvent(new Event('samadhanhub:unauthorized'));
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Response interceptor
 api.interceptors.response.use(
@@ -99,6 +112,14 @@ export const aiMatchingAPI = {
   updateConfig: (data: any) => api.put('/ai-matching/config', data),
   invite: (data: any) => api.post('/ai-matching/invite', data),
   feedback: (data: any) => api.post('/ai-matching/feedback', data),
+};
+
+// Notifications API (role-filtered feed — bell + dashboards)
+export const notificationsAPI = {
+  list: (unreadOnly = false) => api.get('/notifications', { params: unreadOnly ? { unread: 'true' } : {} }),
+  unreadCount: () => api.get('/notifications/unread-count'),
+  markRead: (id: string) => api.patch(`/notifications/${id}/read`),
+  markAllRead: () => api.post('/notifications/read-all'),
 };
 
 export default api;

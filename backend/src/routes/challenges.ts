@@ -62,7 +62,7 @@ function computePriority(severity: string, affected: number, supporters=0, verif
 // GET /api/challenges
 router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { category, state, city, severity, status, urgency, search, expertise, sortBy, page = 1, limit = 20, isDemo } = req.query;
+    const { category, state, city, severity, status, urgency, search, expertise, tags, sortBy, page = 1, limit = 20, isDemo } = req.query;
     
     const filter: any = {};
     if (category) filter.category = category;
@@ -72,19 +72,39 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
     if (status) filter.status = status;
     if (urgency) filter.urgency = urgency;
     if (expertise) filter.suggestedExpertise = { $in: (expertise as string).split(',') };
+    // AI-tag filter: ?tags=pothole,garbage — used by tag search UI
+    if (tags) filter.tags = { $in: (tags as string).split(',').map((t) => t.trim().toLowerCase()).filter(Boolean) };
     if (isDemo !== undefined) filter.isDemoData = isDemo === 'true';
     if (search) {
       filter.$text = { $search: search as string };
     }
 
     const skip = (Number(page) - 1) * Number(limit);
-    const total = await Challenge.countDocuments(filter);
-    const challenges = await Challenge.find(filter)
-      .populate('submittedBy', 'name role avatar')
-      .populate('organization', 'name type logo')
-      .sort(sortBy ? { [sortBy as string]: -1 } : { createdAt: -1 })
-      .skip(skip)
-      .limit(Number(limit));
+    const runQuery = async (f: any) => {
+      const total = await Challenge.countDocuments(f);
+      const challenges = await Challenge.find(f)
+        .populate('submittedBy', 'name role avatar')
+        .populate('organization', 'name type logo')
+        .sort(sortBy ? { [sortBy as string]: -1 } : { createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit));
+      return { total, challenges };
+    };
+
+    // $text covers title + description + tags, but needs the text index
+    // (older DBs may lack it) — fall back to regex across the same fields.
+    let total: number, challenges: any[];
+    try {
+      ({ total, challenges } = await runQuery(filter));
+    } catch (e: any) {
+      if (search && /text index/i.test(String(e?.message || e))) {
+        const rx = new RegExp(String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+        const fb = { ...filter };
+        delete fb.$text;
+        fb.$or = [{ title: rx }, { description: rx }, { tags: rx }];
+        ({ total, challenges } = await runQuery(fb));
+      } else throw e;
+    }
 
     res.json({
       success: true,
@@ -129,6 +149,16 @@ router.post('/', protect, upload.single('image'), async (req: AuthRequest, res: 
     if (body.affectedPopulation) body.affectedPopulation = Number(body.affectedPopulation);
     if (body.suggestedExpertise && typeof body.suggestedExpertise === 'string') {
       try { body.suggestedExpertise = JSON.parse(body.suggestedExpertise); } catch { body.suggestedExpertise = body.suggestedExpertise.split(',').map((s:string)=>s.trim()).filter(Boolean); }
+    }
+    // Tags: accept JSON array or comma-separated (multipart sends strings)
+    if (body.tags && typeof body.tags === 'string') {
+      try {
+        const parsed = JSON.parse(body.tags);
+        body.tags = Array.isArray(parsed) ? parsed : String(body.tags).split(',');
+      } catch { body.tags = String(body.tags).split(','); }
+    }
+    if (Array.isArray(body.tags)) {
+      body.tags = [...new Set(body.tags.map((t:any)=>String(t).trim().toLowerCase().replace(/\s+/g,'-').slice(0,30)).filter(Boolean))].slice(0,10);
     }
     // Basic validation (mirrors validateChallenge but works with multipart)
     if (!body.title || body.title.length < 6) { res.status(400).json({ success:false, message:'Title at least 6 chars' }); return; }
@@ -222,6 +252,18 @@ router.patch('/:id', protect, async (req: AuthRequest, res: Response): Promise<v
     // Only submitter, government, or admin can update
     const isOwner = challenge.submittedBy.toString() === req.user!._id.toString();
     const isGovOrAdmin = ['government', 'admin'].includes(req.user!.role);
+    const isWorkflowRole = ['university', 'industry', 'government', 'admin'].includes(req.user!.role);
+
+    // Poster flow: allow portal roles to advance workflowStage only
+    if (req.body.workflowStage && !isOwner && !isGovOrAdmin && isWorkflowRole) {
+      const allowedStages = ['sent-to-university', 'university-proposed', 'government-approved', 'industry-collaborating', 'progress-photos', 'citizen-satisfied'];
+      if (allowedStages.includes(req.body.workflowStage)) {
+        (challenge as any).workflowStage = req.body.workflowStage;
+        await challenge.save();
+        res.json({ success: true, challenge });
+        return;
+      }
+    }
     
     if (!isOwner && !isGovOrAdmin) {
       res.status(403).json({ success: false, message: 'Not authorized to update this challenge' });
@@ -239,7 +281,7 @@ router.patch('/:id', protect, async (req: AuthRequest, res: Response): Promise<v
       }
       try {
         await AuditLog.create({ user: req.user!._id, action: `challenge:${req.body.verificationStatus}`, entity: 'Challenge', entityId: challenge._id, details: `${old} → ${req.body.verificationStatus}`, ipAddress: req.ip, userAgent: req.headers['user-agent'] });
-        await Notification.create({ recipient: challenge.submittedBy, sender: req.user!._id, type: 'status_change', title: `Your report ${req.body.verificationStatus}`, message: `Problem "${challenge.title}" is now ${req.body.verificationStatus}`, relatedId: challenge._id, relatedModel: 'Challenge' });
+        await Notification.create({ user: challenge.submittedBy, audience: 'citizen', type: 'status-change', title: `Your report ${req.body.verificationStatus}`, message: `Problem "${challenge.title}" is now ${req.body.verificationStatus}`, relatedChallenge: challenge._id });
         const io = req.app.get('io'); if (io) io.to(`challenge-${challenge._id}`).emit('status-updated', { challengeId: challenge._id, verificationStatus: challenge.verificationStatus, status: challenge.status });
       } catch {}
     }

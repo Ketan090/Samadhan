@@ -53,6 +53,20 @@ async function seed() {
     ]);
     console.log(`Created ${users.length} users`);
 
+    // Role-targeted broadcast notifications — each role's feed shows its own.
+    await Notification.insertMany([
+      { audience: 'all', type: 'deadline', title: 'Weekly civic digest is live', message: 'This week: 156 challenges tracked, 12 pilots running, 425K+ lives impacted. Open your dashboard for details.' },
+      { audience: 'citizen', type: 'status-change', title: 'Your ward report was verified', message: 'Problem "Overflowing waste bins near Main Road" is now verified and queued for university matching.' },
+      { audience: 'citizen', type: 'government-response', title: 'Municipality replied to your complaint', message: '"Waterlogging at Station Road" — cleanup crew assigned, ETA 48 hours.' },
+      { audience: 'university', type: 'collaboration-request', title: 'New collaboration invite from EcoTech', message: 'EcoTech Solutions invited IIT Bombay to co-develop the SmartBin pilot. Review and respond.' },
+      { audience: 'university', type: 'task-assignment', title: 'Pilot milestone due Friday', message: 'SmartBin ward-5 sensor deployment milestone is due this Friday. Update progress from your dashboard.' },
+      { audience: 'industry', type: 'solution-submission', title: 'Pilot results submitted for review', message: 'TrafficPulse pilot results are in: 80% efficiency, 500K commuters impacted. Review before scale-up.' },
+      { audience: 'government', type: 'challenge-approval', title: '12 reports awaiting verification', message: 'Ranchi zone has 12 citizen reports pending verification, 3 marked critical.' },
+      { audience: 'expert', type: 'expert-evaluation', title: '3 solutions need your scores', message: 'SmartBin, TrafficPulse and AquaGuard are waiting for impact/feasibility scores.' },
+      { audience: 'admin', type: 'status-change', title: 'Nightly audit completed', message: 'All queues healthy. 2 challenges auto-escalated for breaching verification SLA.' },
+    ]);
+    console.log('Created role broadcast notifications');
+
     // Create Organizations
     const organizations = await Organization.insertMany([
       {

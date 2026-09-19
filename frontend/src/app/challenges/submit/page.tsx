@@ -9,13 +9,16 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { challengesAPI, aiMatchingAPI } from '@/lib/api';
+import { getEffectiveStage, setLocalStage } from '@/lib/workflow';
 import { Camera, ImageIcon, CheckCircle2, Clock, Sparkles, ArrowRight, ArrowLeft, Brain, Eye, Home as HomeIcon, FileText, User, Shield, Building2, Flag } from 'lucide-react';
 
 const categories = ['Environment','Healthcare','Education','Transportation','Agriculture','Infrastructure','Social Welfare','Technology'];
 
 export default function SubmitWithWorkflowPage(){
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, demoMode } = useAuth();
+  const [journeyId, setJourneyId] = useState('');
+  const [liveStage, setLiveStage] = useState('sent-to-university');
   const [step, setStep] = useState(1);
   const [draftRestored, setDraftRestored] = useState(false);
   const [photoNeeded, setPhotoNeeded] = useState(false);
@@ -91,6 +94,23 @@ export default function SubmitWithWorkflowPage(){
   const [reference, setReference] = useState('');
   const [aiStep, setAiStep] = useState(0);
   const [aiDone, setAiDone] = useState(false);
+  // Live journey: after submit, follow THIS challenge's workflowStage till
+  // Complete — the flow continues here instead of redirecting to portals.
+  React.useEffect(() => {
+    if (!submitted || !aiDone || !journeyId) return;
+    let stop = false;
+    const tick = async () => {
+      try {
+        const r = await challengesAPI.getById(String(journeyId).replace('#', ''));
+        if (!stop) setLiveStage(getEffectiveStage(journeyId, r.data?.challenge?.workflowStage));
+      } catch {
+        try { if (!stop) setLiveStage(getEffectiveStage(journeyId)); } catch {}
+      }
+    };
+    tick();
+    const t = setInterval(tick, 20000);
+    return () => { stop = true; clearInterval(t); };
+  }, [submitted, aiDone, journeyId]);
   const [vision, setVision] = useState<any>(null);
   const [visionAnalyzing, setVisionAnalyzing] = useState(false);
   const [showVision, setShowVision] = useState(false);
@@ -155,6 +175,10 @@ export default function SubmitWithWorkflowPage(){
     try {
       const fd = new FormData(); fd.append('image', f); fd.append('lang', 'en');
       const r = await fetch('/api/vision/analyze', { method: 'POST', body: fd, signal: AbortSignal.timeout(100000) as any });
+      if (r.status === 429) {
+        const wait = r.headers.get('retry-after') || '60';
+        throw new Error(`AI rate limit — too many requests from your connection. Wait ~${wait}s and retry.`);
+      }
       let j: any = null;
       try { j = await r.json(); } catch { throw new Error('AI server unreachable — it may be waking up. Retry in 30s.'); }
       if (j.success && j.data) {
@@ -275,11 +299,15 @@ export default function SubmitWithWorkflowPage(){
       const res=await challengesAPI.create(fd);
       saved={...res.data.challenge, photo};
       setReference('#'+saved._id.slice(-6).toUpperCase().replace('CHL-','SAM-'));
+      setJourneyId(saved._id || '');
+      try { setLocalStage(String(saved._id || ''), 'sent-to-university'); } catch {}
     }catch(err:any){
       const msg=err?.response?.data?.message||'Submission saved locally — will sync when online';
       setError(msg);
       const ref='#SAM-'+Math.floor(100000+Math.random()*900000);
       setReference(ref);
+      setJourneyId(saved._id || '');
+      try { setLocalStage(String(saved._id || ''), 'sent-to-university'); } catch {}
       try{ const ex=JSON.parse(localStorage.getItem('samadhanhub_submitted')||'[]'); localStorage.setItem('samadhanhub_submitted',JSON.stringify([saved,...ex].slice(0,20))); }catch{}
     }
     setAiStep(0); setSubmitted(true);
@@ -291,10 +319,49 @@ export default function SubmitWithWorkflowPage(){
     }, 2400);
   };
 
+  // Persistent top stepper — stays visible above till Complete, states live.
+  const trailSteps = [
+    { label: 'Welcome', icon: 'H' },
+    { label: 'Report', icon: '≡' },
+    { label: 'Login', icon: '◐' },
+    { label: 'AI Scan', icon: '◎' },
+    { label: 'University', icon: '▭' },
+    { label: 'Review', icon: '⧉' },
+    { label: 'Complete', icon: '⊕' },
+  ];
+  const trailCur = !aiDone ? 3 : Math.max(4, (() => {
+    const s = liveStage;
+    return s === 'citizen-satisfied' ? 6 : ['government-approved', 'industry-collaborating', 'progress-photos'].includes(s) ? 5 : ['sent-to-university', 'university-proposed'].includes(s) ? 4 : 3;
+  })());
+  const trailDone = aiDone && liveStage === 'citizen-satisfied';
+  const trailBar = (
+    <div className="mb-6">
+      <div className="flex items-center gap-1">
+        {trailSteps.map((s, i) => {
+          const st = (trailDone || i < trailCur) ? 'done' : i === trailCur ? 'active' : 'todo';
+          return (
+            <React.Fragment key={s.label}>
+              <div className="flex flex-col items-center gap-1 min-w-0 flex-1">
+                <div className={`h-1.5 w-full rounded-full ${i <= trailCur ? 'bg-teal-700 dark:bg-teal-600' : 'bg-slate-200 dark:bg-white/10'}`} />
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className={`h-5 w-5 rounded-full grid place-items-center text-[10px] border shrink-0 ${st === 'active' ? 'bg-teal-700 text-white border-teal-700' : st === 'done' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white' : 'bg-slate-100 dark:bg-white/10 border-slate-200 dark:border-white/10 text-slate-400'}`}>{st === 'done' ? '✓' : s.icon}</span>
+                  <span className={`text-[11px] hidden sm:inline truncate ${st === 'active' ? 'text-teal-700 dark:text-teal-400 font-bold' : st === 'done' ? 'text-slate-900 dark:text-white font-semibold' : 'text-slate-400'}`}>{s.label}</span>
+                </div>
+              </div>
+              {i < 6 && <div className="hidden sm:block h-px flex-1 bg-transparent" />}
+            </React.Fragment>
+          );
+        })}
+      </div>
+      <p className="text-[11px] text-slate-400 mt-3 text-center">Landing → Registration → Login → AI Analyses → University → Government → Industry → Citizen Satisfied</p>
+    </div>
+  );
   if(submitted){
     return (
-      <div className="min-h-screen bg-white dark:bg-[#070A12] flex items-center justify-center p-4 sm:p-6">
-        <div className="w-full max-w-xl">
+      <div className="min-h-screen bg-white dark:bg-[#070A12] p-4 sm:p-6">
+        <div className="container max-w-3xl">
+          {trailBar}
+          <div className="w-full max-w-xl mx-auto">
           {!aiDone ? (
             <div className="rounded-[24px] border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-6 sm:p-7 shadow-sm text-center">
               <div className="h-10 w-10 rounded-full border-2 border-slate-200 border-t-teal-600 animate-spin mx-auto" />
@@ -324,14 +391,48 @@ export default function SubmitWithWorkflowPage(){
                 <div className="h-8 w-8 rounded-xl bg-violet-600 text-white grid place-items-center shrink-0">✓</div>
                 <div className="min-w-0 flex-1"><div className="text-xs font-bold">Challenge Sent to University Portal</div><div className="text-[11px] text-slate-500">Per workflow — university will propose a solution next.</div></div>
               </div>
+              {/* Live journey — continues here till Complete instead of redirecting */}
+              {(() => {
+                const labels = ['Welcome', 'Report', 'Login', 'AI Scan', 'University', 'Review', 'Complete'];
+                const stepFor = (s: string) => s === 'citizen-satisfied' ? 6 : ['government-approved', 'industry-collaborating', 'progress-photos'].includes(s) ? 5 : ['sent-to-university', 'university-proposed'].includes(s) ? 4 : 3;
+                const cur = Math.max(4, stepFor(liveStage));
+                const done = liveStage === 'citizen-satisfied';
+                let cap = ['', '', '', '', 'Waiting for a university team to propose a solution.', 'Under government review and pilot.', 'Citizen satisfied — journey complete.'][cur];
+                if (cur === 4) {
+                  const canPropose = !!user && ['university', 'admin'].includes(user.role);
+                  cap += (canPropose || demoMode) ? ' Open the University Portal below to propose.' : ' You will get an alert when a team picks this up.';
+                }
+                return (
+                  <div className="mt-3 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/[0.03] p-4 text-left">
+                    <div className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Your challenge journey{done ? ' — complete' : ' — live'}</div>
+                    <div className="flex items-start gap-1">
+                      {labels.map((l, i) => (
+                        <React.Fragment key={l}>
+                          <div className="flex flex-col items-center gap-1 min-w-0 flex-1">
+                            <span className={`h-5 w-5 rounded-full grid place-items-center text-[10px] font-bold shrink-0 ${i < cur || done ? 'bg-teal-700 text-white' : i === cur ? 'bg-teal-700 text-white animate-pulse' : 'bg-slate-200 dark:bg-white/10 text-slate-400'}`}>{i < cur || done ? '✓' : (i + 1)}</span>
+                            <span className={`text-[10px] truncate max-w-full ${i <= cur ? 'text-slate-700 dark:text-slate-200 font-semibold' : 'text-slate-400'}`}>{l}</span>
+                          </div>
+                          {i < 6 && <div className={`h-0.5 flex-1 rounded-full mt-2 ${i < cur ? 'bg-teal-600' : 'bg-slate-200 dark:bg-white/10'}`} />}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-2">{cap}</p>
+                  </div>
+                );
+              })()}
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <Link href="/university"><Button className="w-full rounded-full h-10 bg-teal-700 hover:bg-teal-800 text-white text-xs">University Portal</Button></Link>
+                {(demoMode || (user && ['university', 'admin'].includes(user.role))) ? (
+                  <Link href="/university"><Button className="w-full rounded-full h-10 bg-teal-700 hover:bg-teal-800 text-white text-xs">University Portal</Button></Link>
+                ) : (
+                  <div className="rounded-full border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] px-3 h-10 grid place-items-center text-[11px] font-medium text-slate-500">University portal is role-restricted in real mode</div>
+                )}
                 <Link href="/track"><Button variant="outline" className="w-full rounded-full h-10 text-xs">Track Status</Button></Link>
                 <Link href="/"><Button variant="outline" className="w-full rounded-full h-10 text-xs">Home</Button></Link>
               </div>
               <p className="text-[11px] text-slate-400 mt-3">Next: University proposes → Government approves → Industry joins → Progress photos → Citizen satisfied.</p>
             </div>
           )}
+          </div>
         </div>
       </div>
     );

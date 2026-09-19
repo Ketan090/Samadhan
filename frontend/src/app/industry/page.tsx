@@ -5,21 +5,79 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getStatusColor, getCategoryIcon } from '@/lib/utils';
-import { challengesAPI, analyticsAPI } from '@/lib/api';
+import { challengesAPI, analyticsAPI, solutionsAPI } from '@/lib/api';
+import { getCreatedChallenges, getAllLocalSolutions } from '@/lib/workflow';
 import {
   Factory, Lightbulb, Users, Link2, Rocket, DollarSign,
   ArrowRight, TrendingUp, Shield, Loader2
 } from 'lucide-react';
+import RoleAlerts from '@/components/RoleAlerts';
+import { useRequireRole, GateStandby } from '@/components/RequireRole';
 
 export default function IndustryPortal() {
   const [liveChallenges, setLiveChallenges] = useState<any[]>([
-    { title: 'Smart Waste Collection for Urban Wards', category: 'Environment', location: 'Ranchi, Jharkhand', matchScore: 94, relevance: 'IoT + Cloud Computing + AI', status: 'open' },
-    { title: 'Traffic Congestion Prediction', category: 'Transportation', location: 'Mumbai, Maharashtra', matchScore: 91, relevance: 'AI/ML + Computer Vision', status: 'open' },
-    { title: 'Urban Flood Prevention Using IoT', category: 'Infrastructure', location: 'Chennai, Tamil Nadu', matchScore: 88, relevance: 'IoT + Data Analytics', status: 'open' },
+    { _id: '1', title: 'Smart Waste Collection for Urban Wards', category: 'Environment', location: 'Ranchi, Jharkhand', matchScore: 94, relevance: 'IoT + Cloud Computing + AI', status: 'open' },
+    { _id: '2', title: 'Traffic Congestion Prediction', category: 'Transportation', location: 'Mumbai, Maharashtra', matchScore: 91, relevance: 'AI/ML + Computer Vision', status: 'open' },
+    { _id: '3', title: 'Urban Flood Prevention Using IoT', category: 'Infrastructure', location: 'Chennai, Tamil Nadu', matchScore: 88, relevance: 'IoT + Data Analytics', status: 'open' },
   ]);
+  const [approvedSolutions, setApprovedSolutions] = useState<any[]>([]);
+  const [joining, setJoining] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<any>(null);
   const [indLoading, setIndLoading] = useState(false);
-  useEffect(()=>{ (async()=>{ setIndLoading(true); try{ const [r, analyticsRes] = await Promise.all([challengesAPI.getAll({limit:6, status:'open'}), analyticsAPI.getOverview().catch(()=>null)]); if(analyticsRes) setAnalytics(analyticsRes.data.overview); if(r.data.challenges?.length) setLiveChallenges(r.data.challenges.map((c:any)=>({ title:c.title, category:c.category, location:`${c.location?.city||''}, ${c.location?.state||''}`, matchScore:87+Math.floor(Math.random()*8), relevance:(c.suggestedExpertise||['IoT','AI']).slice(0,2).join(' + '), status:c.status })))} catch{} finally{ setIndLoading(false);} })(); },[]);
+  // Your created challenges rank above dummy/demo ones
+  const mineChallenges = () => getCreatedChallenges().map((c:any)=>({ _id:c._id, title:c.title, category:c.category, location:`${c.location?.city||''}, ${c.location?.state||''}`, matchScore:98, relevance:((c.tags||[]).slice(0,2).join(' + ')||c.category), status:c.status||'open', workflowStage:c.workflowStage, _mine:true }));
+  const mineApproved = () => getAllLocalSolutions().filter((s:any)=>s.status==='approved');
+  useEffect(()=>{ (async()=>{
+    setIndLoading(true);
+    try{
+      const [r, analyticsRes, solsRes] = await Promise.all([challengesAPI.getAll({limit:6}), analyticsAPI.getOverview().catch(()=>null), solutionsAPI.getAll({ status: 'approved' }).catch(()=>null)]);
+      if(analyticsRes) setAnalytics(analyticsRes.data.overview);
+      if(r.data.challenges?.length) {
+        const list = r.data.challenges.map((c:any)=>({ _id:c._id, title:c.title, category:c.category, location:`${c.location?.city||''}, ${c.location?.state||''}`, matchScore:87+Math.floor(Math.random()*8), relevance:(c.suggestedExpertise||['IoT','AI']).slice(0,2).join(' + '), status:c.status, workflowStage:c.workflowStage }));
+        const mine = mineChallenges().filter((m) => !list.some((x:any) => x._id === m._id));
+        setLiveChallenges([...mine, ...list]);
+      } else {
+        setLiveChallenges((prev) => {
+          const mine = mineChallenges().filter((m) => !prev.some((x) => x._id === m._id));
+          return [...mine, ...prev];
+        });
+      }
+      const apiSols = solsRes?.data?.solutions?.slice(0,6) || [];
+      const localApproved = mineApproved().filter((m) => !apiSols.some((x:any) => x._id === m._id));
+      if (apiSols.length || localApproved.length) setApprovedSolutions([...localApproved, ...apiSols]);
+    } catch {
+      setLiveChallenges((prev) => {
+        const mine = mineChallenges().filter((m) => !prev.some((x) => x._id === m._id));
+        return [...mine, ...prev];
+      });
+      setApprovedSolutions((prev) => {
+        const localApproved = mineApproved().filter((m) => !prev.some((x:any) => x._id === m._id));
+        return [...localApproved, ...prev];
+      });
+    } finally{ setIndLoading(false);}
+  })(); },[]);
+  const handleJoin = async (solId: string, challengeId?: string) => {
+    setJoining(solId);
+    const localCid = challengeId || approvedSolutions.find((x) => x._id === solId)?._challengeId;
+    try {
+      await solutionsAPI.update(solId, { joinIndustry: true });
+      setApprovedSolutions((s) => s.filter((x) => x._id !== solId));
+      if (challengeId) await challengesAPI.update(challengeId, { workflowStage: 'industry-collaborating' }).catch(() => {});
+    } catch {
+      // Offline: record the join locally so the workflow still advances
+      if (localCid) {
+        try {
+          const { updateLocalSolution, setLocalStage } = await import('@/lib/workflow');
+          updateLocalSolution(localCid, solId, { status: 'pilot' });
+          setLocalStage(localCid, 'industry-collaborating');
+        } catch {}
+      }
+      setApprovedSolutions((s) => s.filter((x) => x._id !== solId));
+    }
+    finally { setJoining(null); }
+  };
+  const gate = useRequireRole(['industry', 'admin']);
+  if (!gate.allowed) return <GateStandby />;
   return (
     <div className="min-h-screen bg-white dark:bg-[#070A12]">
       <div className="container py-10">
@@ -29,9 +87,11 @@ export default function IndustryPortal() {
           </div>
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Industry Portal</h1>
-            <p className="text-gray-500 dark:text-slate-400 mt-1">TechCorp Solutions • Information Technology</p>
+            <p className="text-gray-500 dark:text-slate-400 mt-1">Step 8 — Industry Joins and Collaborates on government-approved solutions</p>
           </div>
         </div>
+
+        <div className="mb-8"><RoleAlerts /></div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
           {[
@@ -91,14 +151,35 @@ export default function IndustryPortal() {
           </TabsContent>
 
           <TabsContent value="challenges" className="space-y-4">
-            <div className="flex items-center justify-between"><h2 className="text-xl font-bold text-gray-800 dark:text-white">Challenges Matching Your Capabilities</h2>{indLoading && <Loader2 className="h-4 w-4 animate-spin" />}</div>
+            <div className="rounded-2xl border-2 border-blue-500/20 bg-blue-50/50 dark:bg-blue-950/10 p-4">
+              <div className="text-xs font-bold text-blue-700 dark:text-blue-300">INDUSTRY JOINS AND COLLABORATES</div>
+              <div className="text-xs text-slate-500">Government-approved solutions appear below. Join to mentor, fund, and scale — workflow moves → Progress Photos.</div>
+            </div>
+            <div className="flex items-center justify-between"><h2 className="text-xl font-bold text-gray-800 dark:text-white">Government-Approved Solutions to Join</h2>{indLoading && <Loader2 className="h-4 w-4 animate-spin" />}</div>
+            {approvedSolutions.length===0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 dark:border-white/10 p-6 text-center text-sm text-slate-500">No approved solutions yet — approved university proposals will appear here live.</div>
+            ) : approvedSolutions.map((s:any)=>(
+              <div key={s._id} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs mb-2">Government Approved</Badge>
+                  <h3 className="font-bold">{s.title}</h3>
+                  <p className="text-xs text-slate-500 truncate">{typeof s.challenge==='object'?s.challenge?.title:s.challenge} • {(s.steps?.length||0)} steps</p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Link href={`/solutions/${s._id}`}><Button size="sm" variant="outline" className="rounded-xl">View</Button></Link>
+                  <Button size="sm" disabled={joining===s._id} onClick={()=>handleJoin(s._id, typeof s.challenge==='object'?s.challenge?._id:s.challenge)} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl">{joining===s._id?'Joining…':'Join & Collaborate'}</Button>
+                </div>
+              </div>
+            ))}
+            <div className="flex items-center justify-between mt-6"><h2 className="text-xl font-bold text-gray-800 dark:text-white">Challenges Matching Your Capabilities</h2></div>
             {liveChallenges.map(ch => (
-              <div key={ch.title} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-4 sm:p-6 hover:shadow-md dark:hover:border-white/15 transition-all duration-300 overflow-hidden">
+              <div key={ch._id || ch.title} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-4 sm:p-6 hover:shadow-md dark:hover:border-white/15 transition-all duration-300 overflow-hidden">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-3 flex-wrap">
                       <Badge className={`${getStatusColor(ch.status)} capitalize text-xs font-medium`}>{ch.status || 'open'}</Badge>
                       <Badge variant="outline" className="text-xs border-slate-200 dark:border-white/10 dark:text-slate-300">{getCategoryIcon(ch.category)} {ch.category || 'General'}</Badge>
+                      {ch._mine && <Badge className="bg-blue-600 text-white text-xs border-0">Yours</Badge>}
                     </div>
                     <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight break-words">{ch.title || 'Untitled Challenge'}</h3>
                     <p className="text-sm text-gray-500 dark:text-slate-400 mt-1 truncate">{ch.location || 'Unknown'}</p>

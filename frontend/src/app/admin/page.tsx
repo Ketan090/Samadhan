@@ -11,6 +11,8 @@ import {
   Shield, Users, Building2, Lightbulb, FileText, Settings,
   Activity, AlertTriangle, CheckCircle2, Clock, TrendingUp, Brain, Key, Server, Save
 } from 'lucide-react';
+import RoleAlerts from '@/components/RoleAlerts';
+import { useRequireRole, GateStandby } from '@/components/RequireRole';
 
 export default function AdminDashboard() {
   const [aiConfig, setAiConfig] = useState<any>(null);
@@ -37,6 +39,8 @@ export default function AdminDashboard() {
     }
     finally{ setAiSaving(false); }
   };
+  const gate = useRequireRole(['admin']);
+  if (!gate.allowed) return <GateStandby />;
   return (
     <div className="min-h-screen bg-white dark:bg-[#070A12]">
       <div className="container py-8">
@@ -49,6 +53,8 @@ export default function AdminDashboard() {
             <p className="text-gray-500 dark:text-slate-400">System Administration & Management</p>
           </div>
         </div>
+
+        <div className="mb-8"><RoleAlerts /></div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
@@ -168,7 +174,7 @@ export default function AdminDashboard() {
               <CardHeader><CardTitle className="text-sm text-gray-900 dark:text-white flex items-center gap-2"><Brain className="h-4 w-4 text-violet-600" /> AI Matching & Vision — Provider & Keys</CardTitle><p className="text-xs text-slate-500 mt-1">Paste any provider key once — entire site forwards there. For LM Studio, paste ngrok URL in API Base and set provider to LM Studio.</p></CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid md:grid-cols-3 gap-4">
-                  <div><label className="text-xs font-semibold">Provider</label><Select value={aiForm.provider} onValueChange={v=>setAiForm({...aiForm, provider:v})}><SelectTrigger className="mt-1.5 h-11 rounded-xl"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="mock">Mock (demo, free unlimited)</SelectItem><SelectItem value="openai">OpenAI</SelectItem><SelectItem value="gemini">Gemini</SelectItem><SelectItem value="lmstudio">LM Studio (local/ngrok)</SelectItem><SelectItem value="local">Local Ollama</SelectItem></SelectContent></Select></div>
+                  <div><label className="text-xs font-semibold">Provider</label><Select value={aiForm.provider} onValueChange={v=>setAiForm({...aiForm, provider:v})}><SelectTrigger className="mt-1.5 h-11 rounded-xl"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="xkiro">Xkiro AI (default, free tier)</SelectItem><SelectItem value="gemini">Gemini</SelectItem><SelectItem value="openai">OpenAI</SelectItem><SelectItem value="lmstudio">LM Studio (local/ngrok)</SelectItem><SelectItem value="local">Local Ollama</SelectItem><SelectItem value="mock">Mock (demo, free unlimited)</SelectItem></SelectContent></Select></div>
                   <div className="md:col-span-2"><label className="text-xs font-semibold flex items-center gap-1"><Server className="h-3 w-3" /> API Base / LM Studio URL (for ngrok or localhost:1234)</label><Input value={aiForm.apiBase} onChange={e=>setAiForm({...aiForm, apiBase:e.target.value})} placeholder="https://xxxx.ngrok.io or http://localhost:1234/v1 or https://api.openai.com/v1" className="mt-1.5 h-11 rounded-xl" /></div>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">

@@ -6,7 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Globe, Menu, X, Sun, Moon, User, LogOut, ChevronDown, LayoutDashboard, Lightbulb, Map, Search, Bell, Command, Sparkles, Clock } from 'lucide-react';
+import { Globe, Menu, X, Sun, Moon, User, LogOut, ChevronDown, LayoutDashboard, Lightbulb, Map, Search, Command, Sparkles, Clock, Settings } from 'lucide-react';
+import NotificationsBell from '@/components/NotificationsBell';
 
 const navLinks = [
   { href: '/challenges', label: 'Explore', icon: Lightbulb },
@@ -74,7 +75,7 @@ export default function Navbar() {
             </Button>
             {user ? (
               <>
-                <Button variant="ghost" size="icon" aria-label="Notifications" className="h-9 w-9 rounded-full relative text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white dark:hover:bg-white/10"><Bell className="h-4 w-4" /><span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-orange-500 ring-2 ring-white dark:ring-[#0B0F1A]" /></Button>
+                <NotificationsBell />
                 <div className="relative">
                   <button onClick={() => setUserMenuOpen(!userMenuOpen)} aria-haspopup="menu" aria-expanded={userMenuOpen} aria-label="User menu" className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 transition-colors">
                     <span className="h-7 w-7 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center text-xs font-bold">{user.name?.[0]?.toUpperCase()}</span>
@@ -87,6 +88,7 @@ export default function Navbar() {
                       <div role="menu" className="absolute right-0 top-full mt-2 w-60 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#111827] shadow-xl p-1.5 z-50 animate-scale-in">
                         <div className="px-3 py-2.5 mb-1"><p className="text-sm font-semibold">{user.name}</p><p className="text-xs text-slate-500 capitalize">{user.role}</p></div>
                         {(() => { const roleMap: Record<string,string> = { citizen:'/challenges', expert:'/challenges', admin:'/admin', government:'/government', university:'/university', industry:'/industry' }; return <Link href={roleMap[user.role] || '/challenges'} onClick={()=>setUserMenuOpen(false)} role="menuitem" className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"><LayoutDashboard className="h-4 w-4" /> Dashboard</Link> })()}
+                        <Link href="/settings" onClick={()=>setUserMenuOpen(false)} role="menuitem" className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"><Settings className="h-4 w-4" /> Settings</Link>
                         <button role="menuitem" onClick={()=>{logout();setUserMenuOpen(false)}} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 transition-colors"><LogOut className="h-4 w-4" /> Logout</button>
                       </div>
                     </>
