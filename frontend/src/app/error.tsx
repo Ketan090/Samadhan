@@ -20,6 +20,12 @@ export default function Error({
         {error?.message && (
           <p className="mt-3 rounded-xl bg-slate-100 dark:bg-white/5 px-3 py-2 text-xs text-slate-500 break-words">{error.message}</p>
         )}
+        {!!error?.stack && (
+          <details className="mt-3 text-left">
+            <summary className="text-xs text-slate-400 cursor-pointer">Technical details (screenshot this)</summary>
+            <pre className="mt-2 max-h-40 overflow-auto rounded-xl bg-slate-950 text-[10px] leading-relaxed text-slate-300 p-3 whitespace-pre-wrap break-words">{String(error.stack).slice(0, 1500)}</pre>
+          </details>
+        )}
         <div className="flex gap-2 mt-6">
           <button onClick={() => reset()} className="flex-1 h-10 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-semibold">
             Try again
