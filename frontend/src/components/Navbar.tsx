@@ -22,6 +22,17 @@ const portalLinks = [
   { href: '/impact', label: 'Impact' },
 ];
 
+// Active-link check that never lights two pills at once: a link is active on
+// its exact page, or on a deeper page only when no LONGER sibling link
+// matches better (e.g. /challenges/submit highlights Submit — not Explore —
+// while /challenges/abc123 still highlights Explore).
+const isLinkActive = (pathname: string, href: string) =>
+  pathname === href ||
+  (pathname.startsWith(href + '/') &&
+    !navLinks.some(
+      (o) => o.href !== href && o.href.startsWith(href + '/') && (pathname === o.href || pathname.startsWith(o.href + '/'))
+    ));
+
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -50,7 +61,7 @@ export default function Navbar() {
             <div className="hidden lg:flex items-center gap-1 ml-2">
               {navLinks.map(link => {
                 const Icon = link.icon;
-                const active = pathname === link.href || pathname.startsWith(link.href + '/');
+                const active = isLinkActive(pathname, link.href);
                 return (
                   <Link key={link.href} href={link.href} className={cn("inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors", active ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/10")}>
                     <Icon className="h-3.5 w-3.5" />{link.label}
@@ -127,7 +138,7 @@ export default function Navbar() {
               </form>
               {navLinks.map(link => {
                 const Icon = link.icon;
-                const active = pathname === link.href || pathname.startsWith(link.href + '/');
+                const active = isLinkActive(pathname, link.href);
                 return <Link key={link.href} href={link.href} onClick={()=>setMobileMenuOpen(false)} className={cn("flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium min-h-[44px]", active ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10")}><Icon className="h-4 w-4 shrink-0" />{link.label}</Link>
               })}
               <div className="pt-3 mt-2 border-t border-slate-200 dark:border-white/10">
