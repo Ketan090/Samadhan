@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { solutionsAPI } from '@/lib/api';
 import { getStatusColor, formatDate } from '@/lib/utils';
-import { Plus, ArrowRight, Lightbulb, Beaker, Rocket, CheckCircle2, Sparkles, Search, Layers, SlidersHorizontal } from 'lucide-react';
+import { getAllLocalSolutions, getCreatedChallenges } from '@/lib/workflow';
+import { downloadCsv, solutionCsvRow } from '@/lib/csv';
+import { Plus, ArrowRight, Lightbulb, Beaker, Rocket, CheckCircle2, Sparkles, Search, Layers, SlidersHorizontal, Download } from 'lucide-react';
 
 const demoSolutions = [
   { _id: 's1', title: 'SmartBin: IoT-Enabled Waste Collection', challenge: { title: 'Smart Waste Collection for Urban Wards', category: 'Environment' }, status: 'under-review', scorecard: { totalScore: 7.85 }, technology: ['IoT Sensors', 'Machine Learning', 'Mobile App'], estimatedCost: 2500000, submittedBy: { name: 'Prof. Amit Verma' }, createdAt: '2024-03-15' },
@@ -24,7 +26,32 @@ export default function SolutionsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  useEffect(() => { const load = async () => { try { const res = await solutionsAPI.getAll(); setSolutions(res.data.solutions); } catch { setSolutions(demoSolutions); } setLoading(false); }; load(); }, []);
+  // Your submitted solutions rank above dummy/demo ones
+  const normalizeLocal = (list: any[]) => {
+    let created: any[] = [];
+    try { created = getCreatedChallenges(); } catch {}
+    return list.map((s: any) => {
+      const cid = typeof s.challenge === 'object' ? s.challenge?._id : s.challenge;
+      const hit = created.find((c: any) => c._id === cid || c._id === String(cid || '').replace('#', ''));
+      return {
+        ...s,
+        _mine: true,
+        challenge: { _id: cid, title: hit?.title || (typeof s.challenge === 'object' ? s.challenge?.title : undefined) || 'Linked challenge' },
+        submittedBy: s.submittedBy || { name: 'You' },
+      };
+    });
+  };
+
+  useEffect(() => { const load = async () => {
+    let mine: any[] = [];
+    try { mine = normalizeLocal(getAllLocalSolutions()); } catch {}
+    try {
+      const res = await solutionsAPI.getAll();
+      const api = (res.data.solutions || []).filter((s: any) => !mine.some((m: any) => m._id === s._id));
+      setSolutions([...mine, ...api]);
+    } catch { setSolutions([...mine, ...demoSolutions]); }
+    setLoading(false);
+  }; load(); }, []);
 
   const filtered = solutions.filter(s => {
     if (statusFilter !== 'all' && s.status !== statusFilter) return false;
@@ -63,6 +90,7 @@ export default function SolutionsPage() {
                 <SelectContent><SelectItem value="all">All status</SelectItem><SelectItem value="submitted">Submitted</SelectItem><SelectItem value="under-review">Under Review</SelectItem><SelectItem value="pilot">Pilot</SelectItem><SelectItem value="implemented">Implemented</SelectItem></SelectContent>
               </Select>
               <Link href="/challenges"><Button variant="outline" className="h-11 rounded-full bg-white dark:bg-[#0F1420] hidden sm:flex border-slate-200 dark:border-white/10 dark:text-white hover:bg-slate-50 dark:hover:bg-white/10"><Layers className="h-4 w-4 mr-1.5" /> Challenges</Button></Link>
+              <Button variant="outline" onClick={() => downloadCsv('solutions', filtered.map(solutionCsvRow))} title="Download visible solutions as Excel-ready CSV" className="h-11 rounded-full bg-white dark:bg-[#0F1420] hidden sm:flex border-slate-200 dark:border-white/10 dark:text-white hover:bg-slate-50 dark:hover:bg-white/10"><Download className="h-4 w-4 mr-1.5" /> Excel</Button>
             </div>
           </div>
         </div>
@@ -86,7 +114,7 @@ export default function SolutionsPage() {
               return (
                 <Link key={sol._id} href={`/solutions/${sol._id}`} className="group rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-5 hover:border-slate-300 dark:hover:border-white/15 hover:shadow-lg hover:-translate-y-0.5 transition-all flex flex-col">
                   <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-2"><div className="h-8 w-8 rounded-xl bg-slate-50 dark:bg-white/10 border border-slate-100 dark:border-white/10 grid place-items-center"><StatusIcon className="h-4 w-4 text-slate-600 dark:text-slate-300" /></div><Badge className={`${getStatusColor(sol.status)} capitalize text-[11px] rounded-full`}>{sol.status}</Badge></div>
+                    <div className="flex items-center gap-2"><div className="h-8 w-8 rounded-xl bg-slate-50 dark:bg-white/10 border border-slate-100 dark:border-white/10 grid place-items-center"><StatusIcon className="h-4 w-4 text-slate-600 dark:text-slate-300" /></div><Badge className={`${getStatusColor(sol.status)} capitalize text-[11px] rounded-full`}>{sol.status}</Badge>{sol._mine && <Badge className="bg-violet-600 text-white text-[11px] rounded-full border-0">Yours</Badge>}</div>
                     {sol.scorecard && <div className="text-right leading-none"><div className="text-lg font-bold text-blue-600">{sol.scorecard.totalScore}</div><div className="text-[10px] text-slate-400">/10</div></div>}
                   </div>
                   <h3 className="font-semibold leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">{sol.title}</h3>

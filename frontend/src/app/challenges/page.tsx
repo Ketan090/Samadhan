@@ -8,7 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { challengesAPI } from '@/lib/api';
 import { formatNumber, getStatusColor, getSeverityColor, getCategoryIcon } from '@/lib/utils';
-import { Search, MapPin, Users, ChevronLeft, ChevronRight, SlidersHorizontal, X, Plus, Layers } from 'lucide-react';
+import { getEffectiveStage } from '@/lib/workflow';
+import { downloadCsv, challengeCsvRow } from '@/lib/csv';
+import { Search, MapPin, Users, ChevronLeft, ChevronRight, SlidersHorizontal, X, Plus, Layers, Download } from 'lucide-react';
 
 const categories = ['Environment','Healthcare','Education','Transportation','Agriculture','Infrastructure','Social Welfare','Technology'];
 const severities = ['critical','high','medium','low'];
@@ -31,15 +33,28 @@ function ChallengesInner() {
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({ search: '', category: searchParams.get('category') || '', state: '', severity: '', status: '' });
+  const [tab, setTab] = useState<'all' | 'successful'>('all');
+  const [filters, setFilters] = useState({ search: '', category: searchParams.get('category') || '', state: '', severity: '', status: '', tags: searchParams.get('tag') ? [searchParams.get('tag') as string] : [] as string[] });
 
   useEffect(() => {
     const cat = searchParams.get('category');
     if (cat && cat !== filters.category) setFilters(f => ({ ...f, category: cat }));
+    const tag = searchParams.get('tag');
+    if (tag && !filters.tags.includes(tag)) setFilters(f => ({ ...f, tags: [tag] }));
   }, [searchParams]);
   useEffect(() => { loadChallenges(); }, [filters, pagination.page]);
   const loadChallenges = async () => {
     setLoading(true);
+    // Your created challenges (this device) always rank above dummy/demo ones
+    let mine: any[] = [];
+    try {
+      const local = JSON.parse(localStorage.getItem('samadhanhub_submitted') || '[]');
+      const q = filters.search.trim().toLowerCase();
+      mine = (Array.isArray(local) ? local : [])
+        .filter((c: any) => (!filters.category || c.category === filters.category))
+        .filter((c: any) => (!q || `${c.title} ${(c.description || '')} ${(c.tags || []).join(' ')}`.toLowerCase().includes(q)))
+        .map((c: any) => ({ ...c, _mine: true }));
+    } catch { mine = []; }
     try {
       const params: any = { page: pagination.page, limit: 9 };
       if (filters.category) params.category = filters.category;
@@ -47,13 +62,28 @@ function ChallengesInner() {
       if (filters.severity) params.severity = filters.severity;
       if (filters.status) params.status = filters.status;
       if (filters.search) params.search = filters.search;
+      if (filters.tags.length) params.tags = filters.tags.join(',');
       const res = await challengesAPI.getAll(params);
-      setChallenges(res.data.challenges); setPagination(res.data.pagination);
-    } catch { setChallenges(demoChallenges); setPagination({ page: 1, pages: 1, total: 6 }); }
+      const apiList = (res.data.challenges || []).filter((c: any) => !mine.some((m: any) => m._id === c._id));
+      setChallenges([...mine, ...apiList]); setPagination(res.data.pagination);
+    } catch {
+      setChallenges([...mine, ...demoChallenges]); setPagination({ page: 1, pages: 1, total: mine.length + 6 });
+    }
     setLoading(false);
   };
 
-  const activeFilters = Object.entries(filters).filter(([k,v])=> k!=='search' && v).length;
+  const activeFilters = Object.entries(filters).filter(([k,v])=> k!=='search' && (Array.isArray(v) ? v.length>0 : v)).length;
+  // Successful Challenges tab — completed the full workflow (citizen satisfied / implemented)
+  const isSuccessful = (c: any) => {
+    if (['implemented', 'solved'].includes(c.status)) return true;
+    try { return c._id ? getEffectiveStage(c._id, c.workflowStage) === 'citizen-satisfied' : false; }
+    catch { return false; }
+  };
+  const visible = tab === 'successful' ? challenges.filter(isSuccessful) : challenges;
+  const toggleTagFilter = (t: string) => {
+    setFilters(f => ({ ...f, tags: f.tags.includes(t) ? f.tags.filter(x => x !== t) : [...f.tags, t].slice(0, 5) }));
+    setPagination(p => ({ ...p, page: 1 }));
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#070A12]">
@@ -71,13 +101,14 @@ function ChallengesInner() {
           <div className="mt-6 flex flex-col lg:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input placeholder="Search challenges, expertise, location..." className="pl-11 h-11 bg-white dark:bg-[#0F1420] rounded-full border-slate-200 dark:border-white/10 shadow-sm" value={filters.search} onChange={e=>setFilters({...filters, search:e.target.value})} />
+              <Input placeholder="Search challenges, tags, expertise, location..." className="pl-11 h-11 bg-white dark:bg-[#0F1420] rounded-full border-slate-200 dark:border-white/10 shadow-sm" value={filters.search} onChange={e=>setFilters({...filters, search:e.target.value})} />
             </div>
             <div className="flex gap-2 shrink-0">
               <Button variant="outline" onClick={()=>setShowFilters(!showFilters)} className="h-11 rounded-full px-5 gap-2 bg-white dark:bg-[#0F1420] border-slate-200 dark:border-white/10 dark:text-white hover:bg-slate-50 dark:hover:bg-white/10">
                 <SlidersHorizontal className="h-4 w-4" /> Filters {activeFilters>0 && <span className="h-5 min-w-5 px-1.5 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs grid place-items-center">{activeFilters}</span>}
               </Button>
               <Link href="/challenges/map"><Button variant="outline" className="h-11 rounded-full px-5 bg-white dark:bg-[#0F1420] border-slate-200 dark:border-white/10 dark:text-white hover:bg-slate-50 dark:hover:bg-white/10"><MapPin className="h-4 w-4 mr-1.5" /> Map</Button></Link>
+              <Button variant="outline" onClick={() => downloadCsv('challenges', challenges.map(challengeCsvRow))} title="Download visible challenges as Excel-ready CSV" className="h-11 rounded-full px-5 bg-white dark:bg-[#0F1420] border-slate-200 dark:border-white/10 dark:text-white hover:bg-slate-50 dark:hover:bg-white/10"><Download className="h-4 w-4 mr-1.5" /> Excel</Button>
             </div>
           </div>
 
@@ -101,15 +132,16 @@ function ChallengesInner() {
                   <SelectContent>{statuses.map(s=> <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
                 </Select>
                 {activeFilters>0 ? (
-                  <Button variant="ghost" onClick={()=>setFilters({search: filters.search, category:'', state:'', severity:'', status:''})} className="rounded-full"><X className="h-4 w-4 mr-1" /> Clear filters</Button>
+                  <Button variant="ghost" onClick={()=>setFilters({search: filters.search, category:'', state:'', severity:'', status:'', tags:[]})} className="rounded-full"><X className="h-4 w-4 mr-1" /> Clear filters</Button>
                 ) : <div className="hidden lg:block" />}
               </div>
-              {(filters.category || filters.state || filters.severity || filters.status) && (
+              {(filters.category || filters.state || filters.severity || filters.status || filters.tags.length>0) && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {filters.category && <Badge className="rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900">{filters.category} <button onClick={()=>setFilters({...filters, category:''})} className="ml-1"><X className="h-3 w-3" /></button></Badge>}
                   {filters.state && <Badge className="rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900">{filters.state} <button onClick={()=>setFilters({...filters, state:''})} className="ml-1"><X className="h-3 w-3" /></button></Badge>}
                   {filters.severity && <Badge className="rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 capitalize">{filters.severity}</Badge>}
                   {filters.status && <Badge className="rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 capitalize">{filters.status}</Badge>}
+                  {filters.tags.map(t => <Badge key={t} className="rounded-full bg-teal-700 text-white">#{t} <button onClick={()=>toggleTagFilter(t)} className="ml-1"><X className="h-3 w-3" /></button></Badge>)}
                 </div>
               )}
             </div>
@@ -118,8 +150,12 @@ function ChallengesInner() {
       </div>
 
       <div className="container py-6">
+        <div className="flex items-center gap-2 mb-4">
+          <button onClick={()=>setTab('all')} className={`h-9 px-5 rounded-full text-sm font-semibold transition-colors ${tab==='all' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 text-slate-500'}`}>All Challenges</button>
+          <button onClick={()=>setTab('successful')} className={`h-9 px-5 rounded-full text-sm font-semibold transition-colors ${tab==='successful' ? 'bg-emerald-600 text-white' : 'bg-white dark:bg-[#0F1420] border border-slate-200 dark:border-white/10 text-slate-500'}`}>Successful Challenges{challenges.filter(isSuccessful).length>0 ? ` · ${challenges.filter(isSuccessful).length}` : ''}</button>
+        </div>
         <div className="flex items-center justify-between mb-4">
-          <p className="text-sm text-slate-500"><span className="font-semibold text-slate-900 dark:text-white">{challenges.length}</span> challenges · Page {pagination.page} of {pagination.pages || 1}</p>
+          <p className="text-sm text-slate-500"><span className="font-semibold text-slate-900 dark:text-white">{visible.length}</span> {tab==='successful' ? 'successful challenges' : 'challenges'} · Page {pagination.page} of {pagination.pages || 1}</p>
           <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-slate-400"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live · Updated just now</span>
         </div>
 
@@ -127,13 +163,23 @@ function ChallengesInner() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1,2,3,4,5,6].map(i=> <div key={i} className="rounded-2xl border border-slate-200 dark:border-white/10 p-6 space-y-3 bg-white dark:bg-[#0F1420]"><div className="h-4 w-20 rounded-full bg-slate-100 dark:bg-white/10 animate-pulse" /><div className="h-5 w-3/4 rounded bg-slate-100 dark:bg-white/10 animate-pulse" /><div className="h-3 w-1/2 rounded bg-slate-100 dark:bg-white/10 animate-pulse" /></div>)}
           </div>
+        ) : visible.length===0 && tab==='successful' ? (
+          <div className="rounded-2xl border border-dashed border-emerald-200 dark:border-emerald-900/30 bg-emerald-50/50 dark:bg-emerald-950/10 p-10 text-center">
+            <div className="text-3xl">🎉</div>
+            <div className="mt-2 font-bold">No successful challenges yet</div>
+            <p className="text-sm text-slate-500 mt-1">Walk a challenge through all 10 workflow steps — when the citizen rates satisfaction, it lands here.</p>
+            <Link href="/challenges/submit"><Button className="mt-4 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white h-10 px-6">Start one</Button></Link>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {challenges.map((challenge, idx)=> (
+            {visible.map((challenge, idx)=> (
               <Link key={challenge._id} href={`/challenges/${challenge._id}`} className="group rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F1420] p-5 hover:border-slate-300 dark:hover:border-white/15 hover:shadow-lg hover:-translate-y-0.5 transition-all flex flex-col">
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <Badge className={`${getStatusColor(challenge.status)} capitalize text-[11px] rounded-full`}>{challenge.status}</Badge>
-                  <Badge className={`${getSeverityColor(challenge.severity)} capitalize text-[11px] rounded-full border-0`}>{challenge.severity}</Badge>
+                  <div className="flex gap-1.5">
+                    {challenge._mine && <Badge className="bg-teal-700 text-white text-[11px] rounded-full border-0">Yours</Badge>}
+                    <Badge className={`${getSeverityColor(challenge.severity)} capitalize text-[11px] rounded-full border-0`}>{challenge.severity}</Badge>
+                  </div>
                 </div>
                 <h3 className="font-semibold leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors">{challenge.title}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-slate-500 line-clamp-2">{challenge.description}</p>
@@ -142,6 +188,13 @@ function ChallengesInner() {
                   {(challenge.suggestedExpertise||[]).slice(0,3).map((e:string)=> <span key={e} className="text-[11px] font-medium bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-full border border-transparent dark:border-white/5">{e}</span>)}
                   {(challenge.suggestedExpertise||[]).length>3 && <span className="text-[11px] font-medium bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-full border border-transparent dark:border-white/5">+{(challenge.suggestedExpertise.length-3)}</span>}
                 </div>
+                {(challenge.tags||[]).length>0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {(challenge.tags||[]).slice(0,4).map((t:string)=> (
+                      <button key={t} onClick={(e)=>{ e.preventDefault(); toggleTagFilter(t); }} title={`Search by #${t}`} className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors ${filters.tags.includes(t) ? 'bg-teal-700 text-white border-teal-700' : 'bg-teal-50 dark:bg-teal-950/20 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-900/30 hover:border-teal-500'}`}>#{t}</button>
+                    ))}
+                  </div>
+                )}
                 <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-100 dark:border-white/10 text-xs text-slate-500">
                   <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" /> {formatNumber(challenge.affectedPopulation)} affected</span>
                   <span className="font-medium">{challenge.numberOfTeams||0} teams · {challenge.numberOfSolutions||0} solutions</span>

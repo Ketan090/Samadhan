@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import Challenge from '../models/Challenge';
 import AuditLog from '../models/AuditLog';
 import Notification from '../models/Notification';
+import { sheetsAppend, challengeRow } from '../services/sheetsSync';
 import { protect, authorize, AuthRequest } from '../middleware/auth';
 import { validateChallenge, handleValidationErrors } from '../middleware/validation';
 import AIService from '../services/aiService';
@@ -202,6 +203,9 @@ router.post('/', protect, upload.single('image'), async (req: AuthRequest, res: 
       priorityScore: priority.score,
       priorityLevel: priority.level,
     });
+
+    // Mirror to Google Sheet (Apps Script) — silent no-op when unconfigured.
+    sheetsAppend('challenges', challengeRow(challenge));
 
     // Save image URL already handled; Run AI analysis (non-blocking for duplicate)
     // Duplicate warning is returned immediately; client can decide to continue or view existing
