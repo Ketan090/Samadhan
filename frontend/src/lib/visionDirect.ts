@@ -105,3 +105,80 @@ export async function analyzeDirect(b64: string, lang: string): Promise<{ engine
   }
   throw new Error(last || 'no AI provider keys configured');
 }
+
+// Direct text writer for solution fields (draft-solution fallback). Same
+// shape as the backend endpoint: { text?, items?, steps? }. Text-capable
+// fast models only.
+type TStep = { provider: Provider; model: string };
+const TSTEPS: TStep[] = [
+  { provider: 'xkiro', model: 'qwen/qwen3.5-flash:free' },
+  // Vision model doubles as text writer (verified reachable on the free
+  // tier; the text-only IDs 404 there).
+  { provider: 'nvidia', model: 'meta/llama-3.2-11b-vision-instruct' },
+  { provider: 'xkiro', model: 'qwen/qwen3.5-plus:free' },
+];
+
+const DRAFT_TOKENS: Record<string, number> = {
+  title: 120, problemAddressed: 300, proposedApproach: 500, architecture: 400,
+  expectedImpact: 300, implementationTimeline: 150, scalability: 300,
+  technology: 200, estimatedCost: 60, steps: 600,
+};
+
+const draftPrompt = (field: string, c: string) => {
+  const heads: Record<string, string> = {
+    title: '{"text":"<short project-style solution title, max 12 words>"}',
+    problemAddressed: '{"text":"<2-3 formal sentences: which specific problem the solution addresses>"}',
+    proposedApproach: '{"text":"<detailed solution approach, 120-180 words, formal tone, concrete methods>"}',
+    architecture: '{"text":"<system architecture: layers, components, data flow, 80-120 words>"}',
+    expectedImpact: '{"text":"<measurable expected impact with numbers where sensible, 2-3 sentences>"}',
+    implementationTimeline: '{"text":"<realistic pilot + full deployment timeline, one line>"}',
+    scalability: '{"text":"<how this solution scales to other areas, 2-3 sentences>"}',
+    technology: '{"items":["<4-6 concrete technologies/tools, each 1-4 words>"]}',
+    estimatedCost: '{"text":"<realistic pilot cost in INR as digits only, e.g. 2500000>"}',
+    steps: '{"steps":[{"title":"<step, max 10 words>","description":"<what is done, 1-2 sentences>"}, ... 4 steps total]}',
+  };
+  return `Civic challenge: ${c}\nReply ONLY JSON ${heads[field] || '{"text":"<helpful content>"}'}.`;
+};
+
+export async function generateDirectText(field: string, challenge: string): Promise<{ text?: string; items?: string[]; steps?: any[]; model: string }> {
+  const c = cfgs();
+  const dead = new Set<Provider>();
+  const tokens = DRAFT_TOKENS[field] || 300;
+  let last = '';
+  for (const s of TSTEPS) {
+    const cfg = c[s.provider];
+    if (!cfg.key || dead.has(s.provider)) continue;
+    try {
+      const body = JSON.stringify({
+        model: s.model,
+        messages: [{ role: 'user', content: [{ type: 'text', text: draftPrompt(field, challenge) }] }],
+        temperature: 0.7,
+        max_tokens: tokens,
+        ...(s.provider === 'nvidia' ? { response_format: { type: 'json_object' } } : {}),
+      });
+      const r = await fetch(cfg.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.key}` },
+        body,
+        signal: AbortSignal.timeout(20000) as any,
+      });
+      if (!r.ok) {
+        const t = await r.text().catch(() => '');
+        throw new Error(`${r.status} ${t.slice(0, 160)}`);
+      }
+      const j = (await r.json()) as any;
+      const content = j.choices?.[0]?.message?.content || '';
+      if (!content || content.trim().length < 5) throw new Error('blank response');
+      const m = content.match(/\{[\s\S]*\}/);
+      if (!m) throw new Error('no JSON in response');
+      const parsed = JSON.parse(m[0]);
+      if (!parsed || typeof parsed !== 'object') throw new Error('empty parse');
+      return { text: parsed.text, items: parsed.items, steps: parsed.steps, model: s.model };
+    } catch (e: any) {
+      const msg = String(e?.message || e);
+      if (/429|quota/i.test(msg)) dead.add(s.provider);
+      last = `${s.model}: ${msg.slice(0, 120)}`;
+    }
+  }
+  throw new Error(last || 'no AI provider keys configured');
+}
