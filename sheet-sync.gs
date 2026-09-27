@@ -5,7 +5,7 @@
  * Deploy settings: Execute as = Me. Who has access = Anyone.
  * Copy the Web App URL into backend/.env as APPS_SCRIPT_URL.
  *
- * Expects POST JSON: { "sheet": "challenges" | "solutions",
+ * Expects POST JSON: { "sheet": "challenges" | "solutions" | "users",
  *                       "row": { "title": "...", ... } }
  * Creates one tab per collection; first write creates header columns
  * from the row keys, later writes append below. Visit the Web App URL
@@ -16,7 +16,7 @@ function doPost(e) {
     var data = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     var name = String(data.sheet || 'challenges');
     var row = data.row || {};
-    if (name !== 'challenges' && name !== 'solutions') name = 'challenges';
+    if (name !== 'challenges' && name !== 'solutions' && name !== 'users') name = 'challenges';
 
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sh = ss.getSheetByName(name);

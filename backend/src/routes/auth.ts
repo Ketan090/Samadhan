@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
 import { protect, AuthRequest } from '../middleware/auth';
+import { sheetsAppend, userRow } from '../services/sheetsSync';
 import { validateRegistration, validateLogin, handleValidationErrors } from '../middleware/validation';
 
 const router = Router();
@@ -35,6 +36,9 @@ router.post('/register', validateRegistration, handleValidationErrors, async (re
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'samadhanhub_secret', {
       expiresIn: 60 * 60 * 24 * 7 // 7 days
     });
+
+    // Mirror safe user subset to Google Sheet — silent no-op when unconfigured.
+    sheetsAppend('users', userRow(user));
 
     res.status(201).json({
       success: true,

@@ -13,7 +13,8 @@
 // Notes:
 //   - MongoDB stays the real database; the sheet is a mirror for viewing /
 //     Excel download. When APPS_SCRIPT_URL is unset this is a silent no-op.
-//   - Users are NEVER synced (passwords/PII stay in Mongo only).
+//   - Users sync as a SAFE subset only (name/role/city/organization for
+//     outreach lists). Email, phone, bio and passwords NEVER leave Mongo.
 //   - Fire-and-forget with a short timeout: a slow/dead script can never
 //     break or slow the API response.
 const scriptUrl = () => (process.env.APPS_SCRIPT_URL || '').trim();
@@ -38,6 +39,7 @@ export function challengeRow(c: any): Record<string, any> {
 }
 
 export function solutionRow(s: any): Record<string, any> {
+
   return {
     id: String(s._id || ''),
     challenge: s.challenge?.toString?.() || String(s.challenge || ''),
@@ -50,7 +52,20 @@ export function solutionRow(s: any): Record<string, any> {
   };
 }
 
-export async function sheetsAppend(sheet: 'challenges' | 'solutions', row: Record<string, any>): Promise<void> {
+/** SAFE user subset for outreach lists — email/phone/bio/password excluded. */
+export function userRow(u: any): Record<string, any> {
+  return {
+    id: String(u._id || ''),
+    name: u.name || '',
+    role: u.role || '',
+    city: u.location?.city || '',
+    state: u.location?.state || '',
+    organization: u.organization?.toString?.() || String(u.organization || ''),
+    createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
+  };
+}
+
+export async function sheetsAppend(sheet: 'challenges' | 'solutions' | 'users', row: Record<string, any>): Promise<void> {
   const url = scriptUrl();
   if (!url) return;
   try {
